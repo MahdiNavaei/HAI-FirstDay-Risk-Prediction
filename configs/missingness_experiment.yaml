@@ -1,0 +1,19 @@
+version: "prompt2b-v2"
+status: "PRE-SPECIFIED EXPERIMENT — first-day framing retained; all transformations fold-fitted"
+model_development_status: "READY WITH RESTRICTIONS"
+hypotheses:
+  H1: "Missingness indicators improve prediction beyond observed clinical values."
+  H2: "Any contribution persists after accounting for triage, temporal period, and Department in an appropriate sensitivity analysis."
+  H3: "Missingness patterns are sufficiently stable across verified periods to support transportable use."
+  H4: "Missingness-aware representations improve calibration or clinical utility, not only discrimination."
+ablations:
+  A_values_only: "Observed values with fold-fitted imputation; no explicit missingness indicators."
+  B_values_plus_missingness: "Observed values plus one indicator per included feature; all fit within training folds."
+  C_missingness_only: "Indicators only; descriptive mechanism/workflow baseline."
+  D_low_missing_subset: "Pre-specified low-missing feature subset."
+  E_high_missing_removed: "Remove high-missing features under a frozen threshold and compare."
+  F_department_adjusted: "Repeat B with Department only as a timing-verified sensitivity covariate."
+rules:
+  - "No imputation, resampling, or indicator construction before splitting."
+  - "Do not interpret missingness association as causal or transportable without stability evidence."
+  - "RBC and PT remain excluded from primary analyses until source review."

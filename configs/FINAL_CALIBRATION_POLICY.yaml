@@ -1,0 +1,12 @@
+version: prompt4-final-calibration-policy-v1
+status: FROZEN
+method: NO RECALIBRATION
+reason: Prompt 3 nested sigmoid calibration did not materially improve Brier; Prompt
+  4 evaluates raw frozen probabilities
+development_pooled_reference:
+  brier: 0.0122742131259927
+  slope: 1.028528065340141
+  intercept: 0.1373379215364224
+  citl: 0.0306718561730319
+  oe_ratio: 1.0298340361171268
+held_out_policy: do not fit or select recalibration after observing held-out outcomes

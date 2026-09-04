@@ -1,0 +1,48 @@
+version: "prompt2b-v2"
+prediction_window_source_declared: "Admission and the first 24 hours after hospital admission"
+prediction_timepoint_status: "PARTIALLY VERIFIED"
+author_contact_required: false
+target:
+  field: "Label"
+  eligible_values: [0, 1]
+  eligible_n: 119743
+  eligible_positive_n: 1567
+  eligible_prevalence_pct: 1.308636
+  exclusions_for_missing_predictors: false
+cohorts:
+  cohort_A:
+    name: "Feature Set A — Minimal admission baseline"
+    expected_n: 119743
+    expected_positive_n: 1567
+    expected_prevalence_pct: 1.308636
+    features: ["Age", "Sex", "Triage level"]
+    rationale: "Minimal admission baseline under the source-declared admission/first-day study window; field-level timestamps remain unavailable."
+  cohort_B:
+    name: "Feature Set B — Admission / first-day clinical"
+    expected_n: 119743
+    expected_positive_n: 1567
+    expected_prevalence_pct: 1.308636
+    features: ["Age", "Sex", "Triage level", "SPo2", "BPMin", "BPMax", "PR", "RR", "T", "BS", "BS.1", "WBC", "HB", "HCT", "PLT", "ESR", "CRP", "UREA", "CR", "NA", "K"]
+    candidate_feature_pool: true
+    excluded_primary: ["diagnosis", "Department", "RBC", "PT", "Row", "Year"]
+    rationale: "Admission/first-day candidate pool supported by source-level release wording, subject to cleaning, QC, and leakage review; no automatic inclusion of every field."
+  cohort_C:
+    name: "Feature Set C — Missingness-aware first-day clinical"
+    expected_n: 119743
+    expected_positive_n: 1567
+    expected_prevalence_pct: 1.308636
+    features: "Feature Set B plus explicit missingness indicators for each included Feature Set B variable."
+    excluded_primary: ["diagnosis", "Department", "RBC", "PT", "Row", "Year"]
+    rationale: "Tests informative missingness without causal interpretation; all indicators are fitted inside training folds."
+  cohort_D:
+    name: "Feature Set D — Complaint-enhanced sensitivity model"
+    expected_n: 119743
+    expected_positive_n: 1567
+    expected_prevalence_pct: 1.308636
+    features: "Feature Set C plus a frozen, leakage-reviewed Patient complaint grouping."
+    excluded_primary: ["diagnosis", "Department", "RBC", "PT", "Row", "Year"]
+    rationale: "Sensitivity model only; grouping must be frozen without Label-derived selection."
+row_exclusion_policy:
+  - "Exclude no row solely for missing predictors."
+  - "Exclude a row only for invalid/missing Label after source reconciliation, duplicate-record rule, or a pre-specified source-quality rule."
+  - "Any future exclusion requires a dated entry in the study governance record before test evaluation."

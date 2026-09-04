@@ -1,0 +1,173 @@
+version: prompt4-final-model-specification-v1
+status: FROZEN FOR ONE-TIME PRE-SPECIFIED HELD-OUT-PERIOD EVALUATION
+source_protocol: docs/STUDY_GOVERNANCE.md / frozen development candidate
+outcome:
+  field: Label
+  values:
+  - 0
+  - 1
+  definition_status: UNVERIFIED IN PUBLIC DOCUMENTATION
+model:
+  family: XGBoost
+  estimator: XGBClassifier
+  objective: binary:logistic
+  booster: null
+  n_estimators: 220
+  learning_rate: 0.03
+  max_depth: 5
+  min_child_weight: 1
+  subsample: 0.85
+  colsample_bytree: 0.85
+  gamma: null
+  max_delta_step: null
+  reg_alpha: null
+  reg_lambda: 1.0
+  tree_method: hist
+  eval_metric: logloss
+  scale_pos_weight: 1.0
+  n_jobs: 1
+  random_state: 42
+  unspecified_xgboost_parameters: null means not passed by the Prompt 3 runtime; retain
+    the installed XGBoost library default
+feature_set:
+  name: C
+  base_predictors:
+  - Age
+  - Sex
+  - Triage level
+  - SPo2
+  - BPMin
+  - BPMax
+  - PR
+  - RR
+  - T
+  - BS
+  - BS.1
+  - WBC
+  - HB
+  - HCT
+  - PLT
+  - ESR
+  - CRP
+  - UREA
+  - CR
+  - NA
+  - K
+  missingness_indicators:
+    rule: one numeric indicator per base predictor; 1 when source value is NA or a
+      blank/whitespace token, otherwise 0
+    generated: inside the sklearn Pipeline before preprocessing for each fit
+    columns:
+    - missing__Age
+    - missing__Sex
+    - missing__Triage level
+    - missing__SPo2
+    - missing__BPMin
+    - missing__BPMax
+    - missing__PR
+    - missing__RR
+    - missing__T
+    - missing__BS
+    - missing__BS.1
+    - missing__WBC
+    - missing__HB
+    - missing__HCT
+    - missing__PLT
+    - missing__ESR
+    - missing__CRP
+    - missing__UREA
+    - missing__CR
+    - missing__NA
+    - missing__K
+  final_numeric_columns:
+  - Age
+  - Triage level
+  - SPo2
+  - BPMin
+  - BPMax
+  - PR
+  - RR
+  - T
+  - BS
+  - BS.1
+  - WBC
+  - HB
+  - HCT
+  - PLT
+  - ESR
+  - UREA
+  - CR
+  - NA
+  - K
+  - missing__Age
+  - missing__Triage level
+  - missing__SPo2
+  - missing__BPMin
+  - missing__BPMax
+  - missing__PR
+  - missing__RR
+  - missing__T
+  - missing__BS
+  - missing__BS.1
+  - missing__WBC
+  - missing__HB
+  - missing__HCT
+  - missing__PLT
+  - missing__ESR
+  - missing__UREA
+  - missing__CR
+  - missing__NA
+  - missing__K
+  - missing__Sex
+  - missing__CRP
+  final_categorical_columns:
+  - Sex
+  - CRP
+excluded_predictors:
+- diagnosis
+- Department
+- RBC
+- PT
+- Row
+- Year
+preprocessing:
+  numeric_imputation: SimpleImputer(strategy=median, keep_empty_features=true), fitted
+    on training fold
+  categorical_imputation: SimpleImputer(strategy=constant, fill_value=__MISSING__,
+    keep_empty_features=true), fitted on training fold
+  categorical_encoding: OneHotEncoder(handle_unknown=ignore, sparse_output=true),
+    fitted on training fold
+  scaling: none for XGBoost
+  row_exclusion_for_missing_predictors: false
+training:
+  cohort: Label in {0,1} and Year in {1402,1403,1404}; n=95,997; positives=1,228
+  class_weighting: none
+  resampling: none
+  calibration: none / raw XGBoost probabilities
+  seed_policy: estimator random_state fixed at 42; robustness split seeds are separate
+    and pre-specified
+evaluation:
+  primary_metric: Average Precision (AP)
+  robustness_folds: 5
+  robustness_seeds:
+  - 42
+  - 2024
+  - 31415
+  - 2718
+  - 8675309
+  locked_candidate_period: 1404-2
+  locked_candidate_usage: no fitting, tuning, calibration, prediction, thresholding,
+    or performance calculation
+  operating_budgets_percent:
+  - 1
+  - 2
+  - 5
+  - 10
+  primary_operating_budget_percent: 5
+  threshold_policy: within-held-out-fold percentile ranking at the fixed alert budget;
+    no probability threshold is locked
+  evaluation_unit: encounter-level retrospective
+  patient_independence: unsupported
+freeze_decision: KEEP XGBOOST / FEATURE SET C
+calibration_policy: NO RECALIBRATION
+locked_test_policy: no 1404-2 access before one-time evaluation; no changes afterward

@@ -1,0 +1,71 @@
+{
+  "reference_status": "frozen manuscript analysis aggregate reference",
+  "model": "XGBoost",
+  "feature_representation": "Feature Set C",
+  "primary_metric": "Average Precision (AP)",
+  "primary_metric_implementation": "sklearn.metrics.average_precision_score",
+  "heldout_period": "1404-2",
+  "primary_alert_budget_percent": 5,
+  "secondary_alert_budget_percent": [1, 2, 10],
+  "no_post_heldout_model_tuning": true,
+  "full_n": 119743,
+  "full_positive_n": 1567,
+  "development_n": 95997,
+  "development_positive_n": 1228,
+  "heldout_n": 23746,
+  "heldout_positive_n": 339,
+  "heldout_prevalence": 0.0142760886,
+  "heldout_average_precision": 0.0525214837,
+  "heldout_auroc": 0.789528963,
+  "heldout_brier": 0.013845258,
+  "development_average_precision": 0.0668953664,
+  "top5_alerted_n": 1188,
+  "top5_events_captured": 72,
+  "top5_capture_exact": 0.21238938053097345,
+  "top5_capture_publication": 0.2124,
+  "top5_ppv": 0.0606060606,
+  "top5_enrichment": 4.2452847,
+  "top5_false_alerts_per_true_hai": 15.5,
+  "subgroup_generalization": "worse",
+  "missingness_shift": "moderate",
+  "explanation_stability": "stable",
+  "cohort": {
+    "full_n": 119743,
+    "full_positive_n": 1567,
+    "development_n": 95997,
+    "development_positive_n": 1228,
+    "heldout_n": 23746,
+    "heldout_positive_n": 339,
+    "heldout_prevalence": 0.0142760886
+  },
+  "heldout_metrics": {
+    "average_precision": 0.0525214837,
+    "auroc": 0.789528963,
+    "brier": 0.013845258
+  },
+  "development_metrics": {
+    "average_precision": 0.0668953664
+  },
+  "top5_alert_budget": {
+    "alerted_n": 1188,
+    "events_captured": 72,
+    "capture_exact": 0.21238938053097345,
+    "capture_publication": 0.2124,
+    "ppv": 0.0606060606,
+    "enrichment": 4.2452847,
+    "false_alerts_per_true_hai": 15.5
+  },
+  "qualitative_reference_findings": {
+    "subgroup_generalization": "worse",
+    "missingness_shift": "moderate",
+    "explanation_stability": "stable"
+  },
+  "data_provenance": {
+    "dataset_name": "Hospital-Acquired Infection (HAI) Prediction Dataset",
+    "dataset_release": "HAI-release 1.0.1",
+    "zenodo_doi": "10.5281/zenodo.21831931",
+    "dataset_license": "CC BY-NC 4.0",
+    "analyzed_raw_file_sha256": "e60a63201eceb772329247b561a8dd996d40e33750abfc333e845d6598b08060",
+    "byte_identity_to_zenodo_independently_verified": false
+  }
+}

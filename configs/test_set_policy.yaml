@@ -1,0 +1,17 @@
+version: "prompt2b-v2"
+TEST_SET_LOCKED: true
+test_set_definable_now: false
+test_set_boundary: "NOT DEFINABLE AS A TRUE TEMPORAL TEST FROM THE RELEASE"
+temporal_validation_status: "PARTIAL / COARSE PERIOD VALIDATION ONLY"
+model_development_status: "READY WITH RESTRICTIONS"
+candidate_boundary_pending_author_verification:
+  period: "1404-2"
+  expected_n: 23746
+  expected_positive_n: 339
+  expected_prevalence_pct: 1.427609
+  status: "candidate metadata only; not a verified chronological test cohort"
+rules:
+  - "Do not inspect model performance on the candidate period until Year semantics and ordering are confirmed."
+  - "Do not redesign features, thresholds, preprocessing, or cohort rules after any test-period evaluation."
+  - "If chronology cannot be verified, report that no true temporal test set was available."
+  - "Never call a random row split patient-independent or external validation."

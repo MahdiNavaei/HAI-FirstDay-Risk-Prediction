@@ -1,0 +1,185 @@
+version: "prompt2b-v2"
+status: "AMENDED PROTOCOL ONLY — model development permitted under Prompt 2B restrictions; do not apply to the locked candidate test period"
+raw_source: "user-supplied via --data; the dataset is not distributed with this repository"
+prediction_window_source_declared: "Admission and the first 24 hours after hospital admission"
+prediction_timepoint_status: "PARTIALLY VERIFIED"
+author_contact_required: false
+principles:
+  preserve_raw_columns: true
+  distinguish_correction_from_imputation: true
+  learned_imputation_in_cleaning_layer: false
+  missing_representation: "NA in derived fields plus an explicit missingness indicator when the feature is included"
+  row_deletion_default: false
+variables:
+  Row:
+    role: "audit_only"
+    transformation: "parse integer for traceability; retain raw"
+    allowed: "source row number; not a patient/admission identifier"
+    corrupt_handling: "flag if non-integer or duplicated; exclude from predictors"
+    leakage_status: "HIGH — administrative field of unknown provenance"
+  Year:
+    role: "period/split metadata"
+    transformation: "trim whitespace; preserve exact categories"
+    allowed: ["1402", "1403", "1404", "1404-2"]
+    corrupt_handling: "unseen or blank values become an audit flag; do not convert to dates"
+    leakage_status: "MODERATE — do not use as a clinical predictor until semantics/order are verified"
+  Age:
+    role: "candidate predictor"
+    transformation: "numeric parse; preserve raw and parse-status flag"
+    allowed_range: [0, 120]
+    corrupt_handling: "out-of-range values flagged; no silent row deletion; derived value may be NA only under the locked QC rule"
+    leakage_status: "LOW"
+  Sex:
+    role: "candidate predictor"
+    transformation: "trim/normalize labels in derived field; preserve raw"
+    allowed: ["زن", "مرد"]
+    corrupt_handling: "unseen/blank values flagged as missing"
+    leakage_status: "LOW"
+  Department:
+    role: "sensitivity predictor only"
+    transformation: "trim repeated whitespace; preserve exact category and missingness"
+    corrupt_handling: "do not merge categories by label association; clinically pre-specify any grouping"
+    leakage_status: "HIGH until timing as initial destination is verified"
+  Triage level:
+    role: "restricted admission predictor"
+    transformation: "numeric/ordered categorical parse; retain raw"
+    allowed: [1, 2, 3, 4, 5]
+    corrupt_handling: "unseen values flagged; no automatic correction"
+    leakage_status: "LOW to MODERATE; field-level timing confirmation pending"
+  Patient complaint:
+    role: "complaint sensitivity predictor only"
+    transformation: "preserve raw text; optional frozen clinically reviewed term-grouping"
+    corrupt_handling: "do not use outcome-derived text mapping; rare levels handled inside training only"
+    leakage_status: "MODERATE — may encode infection already present or suspected"
+  SPo2:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; no winsorization in cleaning layer"
+    allowed_range: [0, 100]
+    corrupt_handling: "flag implausible values; retain raw; source review before exclusion"
+    leakage_status: "MODERATE; collection time pending"
+  BPMin:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 300]
+    corrupt_handling: "flag extreme values; no generic IQR deletion"
+    leakage_status: "MODERATE; collection time pending"
+  BPMax:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 300]
+    corrupt_handling: "flag extreme values; no generic IQR deletion"
+    leakage_status: "MODERATE; collection time pending"
+  T:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; candidate comma-decimal correction only in a separate field after source confirmation"
+    allowed_range: [30, 45]
+    corrupt_handling: "370/384 flagged as corrupted; do not infer a decimal or replace silently"
+    leakage_status: "MODERATE; collection time pending"
+  PR:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 300]
+    corrupt_handling: "flag extreme values; source review"
+    leakage_status: "MODERATE; collection time pending"
+  RR:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 100]
+    corrupt_handling: "flag extreme values; source review"
+    leakage_status: "MODERATE; collection time pending"
+  BS:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; keep separate from BS.1"
+    allowed_range: [0, 2000]
+    corrupt_handling: "flag extreme values; no combining or imputation here"
+    leakage_status: "MODERATE; collection time pending"
+  BS.1:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; retain as a separate field"
+    allowed_range: [0, 2000]
+    corrupt_handling: "do not assume it is a second measurement until source confirms duplicate-header semantics"
+    leakage_status: "MODERATE; collection time pending"
+  WBC:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 500]
+    corrupt_handling: "flag extreme values; do not delete severe clinical observations automatically"
+    leakage_status: "HIGH; ordering/suspicion timing pending"
+  RBC:
+    role: "excluded pending source reconciliation"
+    transformation: "numeric parse for audit only; no Excel-date conversion in predictors"
+    allowed: "semantic identity and unit unresolved"
+    corrupt_handling: "retain raw; flag date-serial-like values; no repair"
+    leakage_status: "HIGH"
+  HB:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 50]
+    corrupt_handling: "flag extreme values; source review"
+    leakage_status: "MODERATE; collection time pending"
+  HCT:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 100]
+    corrupt_handling: "flag values over 100; no generic deletion"
+    leakage_status: "MODERATE; collection time pending"
+  PLT:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 100000]
+    corrupt_handling: "flag extreme values; source review"
+    leakage_status: "MODERATE; collection time pending"
+  ESR:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 300]
+    corrupt_handling: "flag extreme values; source review"
+    leakage_status: "HIGH; ordering/suspicion timing pending"
+  CRP:
+    role: "conditional first-day predictor"
+    transformation: "trim/case-normalize qualitative categories in a derived field; preserve raw"
+    allowed: ["Negative", "Trace", "Weakly Positive", "Positive 1+", "Positive 2+", "Positive 3+", "Positive 4+"]
+    corrupt_handling: "unseen categories flagged; never invent a numeric scale"
+    leakage_status: "HIGH; selective ordering/suspicion timing pending"
+  UREA:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 1000]
+    corrupt_handling: "flag extreme values; source review"
+    leakage_status: "MODERATE; collection time pending"
+  CR:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 100]
+    corrupt_handling: "flag extreme values; source review"
+    leakage_status: "MODERATE; collection time pending"
+  NA:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 300]
+    corrupt_handling: "flag extreme values; source review"
+    leakage_status: "MODERATE; collection time pending"
+  K:
+    role: "conditional first-day predictor"
+    transformation: "numeric parse; preserve raw"
+    allowed_range: [0, 100]
+    corrupt_handling: "flag extreme values; source review"
+    leakage_status: "MODERATE; collection time pending"
+  PT:
+    role: "excluded pending source reconciliation"
+    transformation: "numeric parse for audit only; preserve malformed token"
+    allowed_range: [0, 200]
+    corrupt_handling: "13..4 remains flagged; no automatic punctuation repair"
+    leakage_status: "HIGH; 99%+ missing and timing unknown"
+  diagnosis:
+    role: "excluded primary; exploratory only"
+    transformation: "preserve raw; optional code-family mapping only after codebook/timing verification"
+    allowed: "validated ICD-10/codebook values only"
+    corrupt_handling: "do not impute or map by outcome association"
+    leakage_status: "HIGH"
+  Label:
+    role: "target"
+    transformation: "parse integer only; retain raw"
+    allowed: [0, 1]
+    corrupt_handling: "invalid/missing labels are target-ineligible and require source reconciliation; no relabeling"
+    leakage_status: "TARGET"

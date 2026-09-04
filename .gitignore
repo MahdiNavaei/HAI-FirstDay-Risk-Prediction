@@ -1,0 +1,51 @@
+# Local data and row-level outputs
+data/
+*.csv
+*.parquet
+*.pkl
+*.pickle
+*.joblib
+*.rar
+*.zip
+models/
+artifacts/
+tables/
+figures/
+logs/
+reports/
+results/local/
+
+# Python environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Secrets and private material
+.env
+.env.*
+secrets*
+credentials*
+token*
+cookies*
+browser_profiles/
+submission/
+manuscript/
+internal/
+private/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local tooling output
+*.log
+tmp/
+temp/

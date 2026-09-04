@@ -1,0 +1,19 @@
+version: prompt4-final-test-execution-policy-v1
+status: FROZEN — DO NOT EXECUTE IN PROMPT 4
+locked_candidate_period: 1404-2
+expected_rows: 23746
+held_out_period_allowed: true
+chronology_status: unverified; evaluation must be called pre-specified held-out-period
+  evaluation, not true temporal validation
+execution: one-time only after this policy and all model/operating/calibration specifications
+  are frozen
+before_execution:
+- confirm disjoint boundary and source hash
+- do not alter raw data
+- do not change model, features, preprocessing, calibration, or operating budgets
+after_observing_results:
+- report all pre-specified metrics and uncertainty
+- do not retune or change the model
+- if performance degrades, report degradation and downgrade conclusions
+- do not claim prospective, external, patient-independent, or deployment validation
+permitted_wording: pre-specified held-out-period evaluation

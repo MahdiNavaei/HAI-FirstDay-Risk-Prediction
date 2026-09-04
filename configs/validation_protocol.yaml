@@ -1,0 +1,28 @@
+version: "prompt2b-v2"
+status: "DESIGN ONLY — model development permitted under Prompt 2B restrictions; no locked-candidate test evaluation"
+prediction_window_source_declared: "Admission and the first 24 hours after hospital admission"
+prediction_timepoint_status: "PARTIALLY VERIFIED"
+temporal_validation_status: "PARTIAL / COARSE PERIOD VALIDATION ONLY"
+patient_independence: "UNSUPPORTED"
+primary_protocol:
+  if_author_verifies_year_order: true
+  if_deterministic_evidence_establishes_year_order: true
+  development_periods: ["1402", "1403"]
+  internal_validation_period: "1404"
+  locked_test_period_candidate: "1404-2"
+  locked_test_candidate_expected_n: 23746
+  locked_test_candidate_expected_positive_n: 339
+  locked_test_candidate_expected_prevalence_pct: 1.427609
+  model_selection: "development and internal validation only"
+  preprocessing: "fit every learned transformation inside the training partition"
+  patient_independence: "unsupported because no patient/admission/encounter identifier is released"
+  external_validation: false
+if_author_does_not_verify_year_order:
+  temporal_holdout: false
+  permitted_analysis: "development-only stratified repeated resampling with explicit internal-validation wording"
+  interpretation: "not evidence of temporal generalizability"
+alternatives:
+  - "Group split if a valid de-identified patient/admission key is supplied"
+  - "Repeated stratified cross-validation within development data only"
+  - "Bootstrap confidence intervals for untouched evaluation predictions"
+  - "Department robustness with pre-specified common/clinically coherent groups"

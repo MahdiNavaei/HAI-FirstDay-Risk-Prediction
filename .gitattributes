@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.py text diff=python
+*.md text diff
+*.yaml text diff
+*.yml text diff
+*.json text diff

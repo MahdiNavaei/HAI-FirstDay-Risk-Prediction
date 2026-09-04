@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the repository and the source dataset."
+type: software
+title: "HAI First-Day Risk Prediction"
+version: "1.0.0"
+date-released: "2026-09-04"
+authors:
+  - family-names: Navaei
+    given-names: Mahdi
+repository-code: "https://github.com/MahdiNavaei/HAI-FirstDay-Risk-Prediction"
+url: "https://github.com/MahdiNavaei/HAI-FirstDay-Risk-Prediction"
+license: MIT
+keywords:
+  - hospital-acquired infection
+  - electronic health records
+  - clinical prediction
+  - rare-event prediction
+  - reproducibility
+abstract: "Reproducible code and frozen aggregate reference materials for a retrospective first-day EHR risk-prediction analysis."

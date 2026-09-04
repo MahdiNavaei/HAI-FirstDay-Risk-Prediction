@@ -1,0 +1,27 @@
+version: "prompt2b-v2"
+outcome: "Label as released; exact HAI operational definition UNVERIFIED IN PUBLIC DOCUMENTATION"
+natural_prevalence_n: 119743
+natural_prevalence_positive_n: 1567
+natural_prevalence_pct: 1.308636
+model_development_status: "READY WITH RESTRICTIONS"
+test_set_locked: true
+patient_independence: "UNSUPPORTED"
+primary_metric:
+  name: "Average Precision (PR-AUC)"
+  rationale: "The positive prevalence is approximately 1.309%; Average Precision and precision at alert budgets expose rare-event workload better than accuracy or AUROC alone."
+secondary_metrics:
+  discrimination: ["AUROC", "Average Precision with prevalence/no-skill baseline"]
+  thresholded: ["sensitivity", "specificity", "PPV", "NPV", "F1", "F2"]
+  probabilistic: ["Brier score", "calibration-in-the-large", "calibration slope", "calibration intercept", "observed/expected ratio"]
+clinical_operating_metrics:
+  top_risk_percentages: [1, 2, 5, 10]
+  report: ["HAI captured", "sensitivity", "alerts per 100 admissions", "false alerts per true HAI detected"]
+  fixed_sensitivity: [0.50, 0.80, 0.90]
+  fixed_alert_budgets_percent: [1, 2, 5, 10]
+  threshold_policy: "pre-specify in development/validation; never choose using locked test outcomes"
+clinical_utility:
+  decision_curve_analysis: true
+  caveat: "Net benefit requires explicit false-alert harm, true-detection benefit, and workflow-capacity assumptions absent from the CSV."
+uncertainty:
+  primary: "bootstrap confidence intervals or repeated split-compatible intervals"
+  subgroup: "report exact event counts and intervals; suppress inferential comparisons below the robustness thresholds"

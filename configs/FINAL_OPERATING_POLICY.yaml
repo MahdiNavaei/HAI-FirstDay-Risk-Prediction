@@ -1,0 +1,57 @@
+version: prompt4-final-operating-policy-v1
+status: FROZEN BEFORE HELD-OUT EVALUATION
+primary_operating_point: top 5% alert budget
+reported_alert_budgets_percent:
+- 1
+- 2
+- 5
+- 10
+selection_rule: rank predictions within the evaluated held-out set and alert the top
+  fixed percentage; do not choose a probability threshold using held-out outcomes
+development_reference: Prompt 4 pooled OOF development estimates only; not a threshold
+  calibration
+threshold_locked: false
+no_test_optimization: true
+degradation_rule: report the held-out result with uncertainty; do not retune, change
+  features, recalibrate, or rescue the model after observing it
+development_pooled_reference:
+- budget_pct: 1
+  alerted_n: 960.0
+  hai_captured_n: 123.0
+  sensitivity: 0.1001628664495114
+  specificity: 0.991167997974021
+  ppv: 0.128125
+  false_positives: 837.0
+  false_alerts_per_true_hai: 6.804878048780488
+  enrichment_over_prevalence: 10.015973635993484
+  ppv_enrichment: 10.015973635993484
+- budget_pct: 2
+  alerted_n: 1920.0
+  hai_captured_n: 188.0
+  sensitivity: 0.1530944625407166
+  specificity: 0.981723981470734
+  ppv: 0.0979166666666666
+  false_positives: 1732.0
+  false_alerts_per_true_hai: 9.212765957446807
+  enrichment_over_prevalence: 7.654483916938111
+  ppv_enrichment: 7.654483916938111
+- budget_pct: 5
+  alerted_n: 4800.0
+  hai_captured_n: 347.0
+  sensitivity: 0.2825732899022801
+  specificity: 0.9530120609059924
+  ppv: 0.0722916666666666
+  false_positives: 4453.0
+  false_alerts_per_true_hai: 12.8328530259366
+  enrichment_over_prevalence: 5.651289189739414
+  ppv_enrichment: 5.651289189739414
+- budget_pct: 10
+  alerted_n: 9600.0
+  hai_captured_n: 534.0
+  sensitivity: 0.4348534201954397
+  specificity: 0.9043358060125146
+  ppv: 0.055625
+  false_positives: 9066.0
+  false_alerts_per_true_hai: 16.97752808988764
+  enrichment_over_prevalence: 4.3483983102605865
+  ppv_enrichment: 4.3483983102605865
