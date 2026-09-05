@@ -8,7 +8,7 @@ reported_alert_budgets_percent:
 - 10
 selection_rule: rank predictions within the evaluated held-out set and alert the top
   fixed percentage; do not choose a probability threshold using held-out outcomes
-development_reference: robustness analysis pooled OOF development estimates only; not a threshold
+development_reference: pooled OOF development estimates from the robustness analysis; not a threshold
   calibration
 threshold_locked: false
 no_test_optimization: true

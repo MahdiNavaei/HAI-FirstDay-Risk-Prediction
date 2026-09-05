@@ -1,8 +1,8 @@
-"""robustness analysis frozen-model robustness, reliability, and freeze analysis.
+"""Frozen-model robustness, reliability, and freeze analysis.
 
-This runner deliberately uses only the development analysis development pool.  It does
+This runner deliberately uses only the development pool.  It does
 not load, score, predict, or otherwise inspect model performance for the
-candidate period ``1404-2``.  The development analysis selected configuration is reused
+candidate period ``1404-2``.  The selected development configuration is reused
 without tuning.
 """
 
@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import modeling_runtime as R  # noqa: E402
-import development_analysis as P3  # noqa: E402
+import development_analysis as DEV  # noqa: E402
 from modeling_runtime import calibration_slope_intercept  # noqa: E402
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -46,7 +46,7 @@ FIGURE = ROOT / "figures" / "robustness"
 ARTIFACT = ROOT / "artifacts" / "robustness"
 MODEL = ROOT / "models" / "robustness"
 CONFIG = ROOT / "configs"
-RAW = P3.RAW
+RAW = DEV.RAW
 LOCKED_YEAR = "1404-2"
 ROBUSTNESS_SEEDS = [42, 2024, 31415, 2718, 8675309]
 N_SPLITS = 5
@@ -141,7 +141,7 @@ def summarize_values(values: pd.Series | np.ndarray | list[float]) -> dict[str, 
     arr = pd.to_numeric(pd.Series(values), errors="coerce").dropna().to_numpy(dtype=float)
     if len(arr) == 0:
         return {k: float("nan") for k in ["mean", "median", "sd", "iqr", "ci_low", "ci_high", "min", "max"]}
-    lo, hi = P3.ci95(arr)
+    lo, hi = DEV.ci95(arr)
     return {
         "mean": float(np.mean(arr)),
         "median": float(np.median(arr)),
@@ -211,7 +211,7 @@ def native_treeshap(pipe: Any, X_val: pd.DataFrame) -> tuple[list[str], np.ndarr
         transformed = transformed.toarray()
     transformed = np.asarray(transformed)
     values = pipe.named_steps["model"].get_booster().predict(xgb.DMatrix(transformed), pred_contribs=True)
-    return P3.get_transformed_feature_names(pipe), np.asarray(values)[:, :-1]
+    return DEV.get_transformed_feature_names(pipe), np.asarray(values)[:, :-1]
 
 
 def shap_fold_summary(pipe: Any, X_val: pd.DataFrame, split: dict[str, Any]) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -253,15 +253,15 @@ def shap_fold_summary(pipe: Any, X_val: pd.DataFrame, split: dict[str, Any]) -> 
 
 def make_input_and_pipeline(label: str, model: str, clean: pd.DataFrame, params: dict[str, Any], y_train: pd.Series | None = None) -> tuple[pd.DataFrame, Any]:
     if label in {"A", "B", "C", "D"}:
-        X = P3.input_frame(clean, label)
+        X = DEV.input_frame(clean, label)
         pipe = R.make_pipeline(model, label, params=params, strategy="none", y=y_train)
         return X, pipe
     if label == "M0":
-        X = P3.sklearn_safe_frame(clean[R.BASE_FEATURES_B].copy())
+        X = DEV.sklearn_safe_frame(clean[R.BASE_FEATURES_B].copy())
         pipe = R.make_pipeline_for_columns(model, R.BASE_FEATURES_B, params=params, strategy="none", y=y_train, add_missingness=False)
         return X, pipe
     if label == "M1":
-        X = P3.sklearn_safe_frame(clean[R.BASE_FEATURES_B].copy())
+        X = DEV.sklearn_safe_frame(clean[R.BASE_FEATURES_B].copy())
         pipe = R.make_pipeline_for_columns(model, R.FEATURE_SETS["C"], params=params, strategy="none", y=y_train, add_missingness=True)
         return X, pipe
     if label == "M2":
@@ -396,7 +396,7 @@ def run_simple_challenge(runs: dict[str, dict[str, Any]]) -> tuple[pd.DataFrame,
     comparators = [
         ("Logistic Regression / B", runs["Logistic Regression/B"]),
         ("Logistic Regression / C", runs["Logistic Regression/C"]),
-        ("LightGBM / C (best non-XGBoost development analysis candidate)", runs["LightGBM/C"]),
+        ("LightGBM / C (best non-XGBoost development candidate)", runs["LightGBM/C"]),
         ("XGBoost / B", runs["XGBoost/B"]),
     ]
     rows: list[dict[str, Any]] = []
@@ -420,7 +420,7 @@ def run_simple_challenge(runs: dict[str, dict[str, Any]]) -> tuple[pd.DataFrame,
     strongest = table.iloc[0]
     text = """# Simple-model challenge
 
-The challenge reused the frozen development analysis configurations on the same robustness analysis repeated five-fold partitions. No new tuning was performed. Differences are paired within split (`XGBoost / C` minus comparator); positive Brier differences mean XGBoost had worse Brier because lower is better.
+The challenge reused the frozen development configurations on the same repeated five-fold robustness partitions. No new tuning was performed. Differences are paired within split (`XGBoost / C` minus comparator); positive Brier differences mean XGBoost had worse Brier because lower is better.
 
 """
     text += table.to_string(index=False)
@@ -450,7 +450,7 @@ def run_incremental_value(runs: dict[str, dict[str, Any]]) -> pd.DataFrame:
     make_plot(FIGURE / "incremental_feature_value", fig)
     text = """# Incremental feature value
 
-The same frozen XGBoost configuration was evaluated on identical robustness analysis folds. `A_to_B` measures the addition of first-day clinical values beyond Age/Sex/Triage. `B_to_C` measures the addition of explicit missingness indicators beyond those values. Differences are paired (`newer - older`) and are not interpreted as causal effects.
+The same frozen XGBoost configuration was evaluated on identical robustness folds. `A_to_B` measures the addition of first-day clinical values beyond Age/Sex/Triage. `B_to_C` measures the addition of explicit missingness indicators beyond those values. Differences are paired (`newer - older`) and are not interpreted as causal effects.
 
 """ + table.to_string(index=False) + "\n\nA small B-to-C difference is not promoted as a primary novelty."
     write_text(REPORT / "05_incremental_feature_value.md", text)
@@ -487,7 +487,7 @@ def run_missingness_decision(runs: dict[str, dict[str, Any]]) -> tuple[str, pd.D
     pd.DataFrame(budget_rows).to_csv(TABLE / "missingness_budget_utility.csv", index=False, encoding="utf-8-sig")
     text = f"""# Missingness claim decision
 
-development analysis classified missingness indicators as NEUTRAL with M1-M0 mean AP change approximately +0.004828. Under the stronger frozen-model resampling, the paired result is **{status}**.
+Development analysis classified missingness indicators as NEUTRAL with M1-M0 mean AP change approximately +0.004828. Under the stronger frozen-model resampling, the paired result is **{status}**.
 
 {table.to_string(index=False)}
 
@@ -581,7 +581,7 @@ def run_calibration_stress(clean: pd.DataFrame, primary: dict[str, Any], y: pd.S
     make_plot(FIGURE / "calibration_stress_test", fig)
     text = f"""# Calibration stress test
 
-The frozen raw XGBoost probabilities were evaluated using pooled out-of-fold predictions averaged across the five repeats. No post-hoc recalibration was fitted in robustness analysis. the development-analysis nested sigmoid comparison did not materially improve Brier, so the final policy remains no recalibration.
+The frozen raw XGBoost probabilities were evaluated using pooled out-of-fold predictions averaged across the five repeats. No post-hoc recalibration was fitted during the robustness analysis. The nested sigmoid comparison performed during development did not materially improve Brier, so the final policy remains no recalibration.
 
 Overall: Brier `{overall['brier']:.6f}`, slope `{overall['calibration_slope']:.6f}`, intercept `{overall['calibration_intercept']:.6f}`, calibration-in-the-large `{overall['calibration_in_the_large']:.6f}`, observed/expected ratio `{overall['observed_expected_ratio']:.6f}`.
 
@@ -932,7 +932,7 @@ The analysis does not infer that a released label is wrong when the model disagr
 
 
 def run_negative_control(clean: pd.DataFrame, y: pd.Series, params: dict[str, Any]) -> tuple[str, pd.DataFrame]:
-    X = P3.input_frame(clean, "C")
+    X = DEV.input_frame(clean, "C")
     rows = []
     for perm_seed in NEGATIVE_CONTROL_SEEDS:
         y_perm = pd.Series(np.random.default_rng(perm_seed).permutation(y.to_numpy()), index=y.index)
@@ -966,7 +966,7 @@ def run_duplicate_sensitivity(raw: pd.DataFrame, clean: pd.DataFrame) -> tuple[s
     status = "not applicable" if raw_feature == 0 and dev_feature == 0 else "concerning"
     write_text(REPORT / "19_duplicate_sensitivity.md", f"""# Duplicate sensitivity
 
-Stage 1/2 reported zero exact duplicate rows and zero duplicate feature vectors after excluding administrative `Row` and target `Label`. The deterministic recheck found: `{json.dumps(counts)}`.
+Earlier data-audit stages reported zero exact duplicate rows and zero duplicate feature vectors after excluding administrative `Row` and target `Label`. The deterministic recheck found: `{json.dumps(counts)}`.
 
 Terminal result: **{status}**. Because no exact development predictor duplicates were present, a grouped/removed-duplicate model sensitivity was not applicable. This does not establish patient uniqueness and does not identify repeated admissions without a linkage key.
 """)
@@ -998,7 +998,7 @@ def write_freeze_configs(enrichment: pd.DataFrame, pooled_alert: pd.DataFrame, c
         "primary_operating_point": "top 5% alert budget",
         "reported_alert_budgets_percent": [1, 2, 5, 10],
         "selection_rule": "rank predictions within the evaluated held-out set and alert the top fixed percentage; do not choose a probability threshold using held-out outcomes",
-        "development_reference": "robustness analysis pooled OOF development estimates only; not a threshold calibration",
+        "development_reference": "pooled OOF development estimates from the robustness analysis; not a threshold calibration",
         "threshold_locked": False,
         "no_test_optimization": True,
         "degradation_rule": "report the held-out result with uncertainty; do not retune, change features, recalibrate, or rescue the model after observing it",
@@ -1009,7 +1009,7 @@ def write_freeze_configs(enrichment: pd.DataFrame, pooled_alert: pd.DataFrame, c
         "version": "final-calibration-policy-v1",
         "status": "FROZEN",
         "method": "NO RECALIBRATION",
-        "reason": "development analysis nested sigmoid calibration did not materially improve Brier; robustness analysis evaluates raw frozen probabilities",
+        "reason": "nested sigmoid calibration evaluated during development did not materially improve Brier; the frozen model therefore uses raw probabilities without recalibration",
         "development_pooled_reference": calibration,
         "held_out_policy": "do not fit or select recalibration after observing held-out outcomes",
     }
@@ -1040,7 +1040,7 @@ def write_manuscript_decision_and_titles(robust: pd.DataFrame, enrichment: pd.Da
 3. **C — Calibration/reliability:** important supporting contribution because Brier, calibration slope, subgroup calibration, and uncertainty are reported.
 4. **D — Incremental value of first-day clinical data:** central secondary analysis comparing A→B and B→C.
 5. **F — Robustness under period/subgroup shift:** descriptive coarse-period and subgroup evidence, not temporal or patient-independent validation.
-6. **E — Missingness-aware prediction:** secondary workflow finding; robustness analysis classification is **{missingness_status}**, so it is not placed in the title or claimed as the primary novelty.
+6. **E — Missingness-aware prediction:** secondary workflow finding; robustness-analysis classification is **{missingness_status}**, so it is not placed in the title or claimed as the primary novelty.
 
 Recommended contribution statement: {contribution}
 
@@ -1053,7 +1053,7 @@ Complaint grouping remains sensitivity-only and is classified **{complaint_statu
         "Evaluating First-Day Clinical Information for Hospital-Acquired Infection Risk Stratification under a Fixed Alert Budget",
         "Calibration, Enrichment, and Period Robustness in Early Hospital-Acquired Infection Risk Prediction",
     ]
-    write_text(REPORT / "24_provisional_title_candidates.md", "# Provisional title candidates\n\n" + "\n".join(f"{i}. {title}" for i, title in enumerate(titles, start=1)) + "\n\nInformative missingness is intentionally absent from the titles because its robustness analysis effect is not promoted as a robust primary novelty.")
+    write_text(REPORT / "24_provisional_title_candidates.md", "# Provisional title candidates\n\n" + "\n".join(f"{i}. {title}" for i, title in enumerate(titles, start=1)) + "\n\nInformative missingness is intentionally absent from the titles because its robustness-analysis effect is not promoted as a robust primary novelty.")
     return contribution
 
 
@@ -1080,7 +1080,7 @@ def write_reviewer_stress(robust: pd.DataFrame, enrichment: pd.DataFrame, simple
 def write_master_report(summary: dict[str, Any], robust: pd.DataFrame, enrichment: pd.DataFrame, simple: pd.DataFrame, incremental: pd.DataFrame, missingness_status: str, complaint_status: str, calibration: dict[str, Any], pr: pd.DataFrame, alert: pd.DataFrame, dca_status: str, subgroup_status: str, period_status: str, bootstrap: pd.DataFrame, shap_status: str, error_status: str, negative_status: str, duplicate_status: str) -> None:
     top = enrichment.loc[enrichment.budget_pct == 5].iloc[0]
     b5 = alert[(alert.budget_pct == 5) & (alert.metric == "sensitivity")].iloc[0]
-    text = f"""# robustness analysis Master Robustness and Freeze Report
+    text = f"""# Robustness and Freeze Master Report
 
 **Status:** `PASS WITH WARNINGS`
 **Locked candidate touched:** `NO`
@@ -1088,7 +1088,7 @@ def write_master_report(summary: dict[str, Any], robust: pd.DataFrame, enrichmen
 
 ## 1. Executive summary
 
-robustness analysis challenged the frozen development analysis candidate using 25 repeated stratified five-fold development resamples without tuning. The candidate remained above the prevalence baseline, and the top-5% alert result was evaluated with fold/repeat uncertainty. The result supports one pre-specified held-out-period evaluation with warnings; it does not establish patient-independent, external, prospective, or deployment validity.
+The robustness analysis challenged the frozen development candidate using 25 repeated stratified five-fold development resamples without tuning. The candidate remained above the prevalence baseline, and the top-5% alert result was evaluated with fold/repeat uncertainty. The result supports one pre-specified held-out-period evaluation with warnings; it does not establish patient-independent, external, prospective, or deployment validity.
 
 ## 2. Frozen model
 
@@ -1186,9 +1186,9 @@ The ten-criticism simulation is in `reports/robustness/23_cbm_reviewer_stress_te
 
 Q1 readiness: **{summary['q1_readiness']}**. CBM readiness: **{summary['cbm_readiness']}**. AI in Medicine readiness: **{summary['ai_in_medicine_readiness']}**. The primary unresolved risks are outcome definition, field-level timing, patient independence, single-release generalizability, modest absolute PPV, and workflow dependence.
 
-## 26. Exact Stage 5 instructions
+## 26. Exact held-out evaluation instructions
 
-Stage 5 may run exactly once on `1404-2` only under the frozen model, calibration, operating, and test policies. It must not tune, change features, alter preprocessing, recalibrate, choose thresholds, or inspect results iteratively. Report PR-AUC, AUROC, Brier, calibration slope/intercept/CITL, prevalence, alert budgets 1/2/5/10%, uncertainty, and any degradation. Use the wording `pre-specified held-out-period evaluation`; do not call it true temporal validation unless Year chronology is independently verified. Do not claim patient-independent, external, prospective, or deployment validity. If held-out performance degrades, report it and downgrade the conclusions; do not rescue the model.
+The held-out evaluation may run exactly once on `1404-2` only under the frozen model, calibration, operating, and test policies. It must not tune, change features, alter preprocessing, recalibrate, choose thresholds, or inspect results iteratively. Report PR-AUC, AUROC, Brier, calibration slope/intercept/CITL, prevalence, alert budgets 1/2/5/10%, uncertainty, and any degradation. Use the wording `pre-specified held-out-period evaluation`; do not call it true temporal validation unless Year chronology is independently verified. Do not claim patient-independent, external, prospective, or deployment validity. If held-out performance degrades, report it and downgrade the conclusions; do not rescue the model.
 """
     write_text(ROOT / "reports" / "ROBUSTNESS_AND_FREEZE_MASTER.md", text)
 
@@ -1232,7 +1232,7 @@ def write_summary_json(enrichment: pd.DataFrame, robust: pd.DataFrame, calibrati
         "cbm_readiness": cbm,
         "ai_in_medicine_readiness": aim,
         "primary_manuscript_contribution": contribution,
-        "prompt5_allowed": True,
+        "heldout_evaluation_allowed": True,
         "robustness_resamples": {
             "folds": N_SPLITS,
             "seeds": ROBUSTNESS_SEEDS,
@@ -1247,7 +1247,7 @@ def write_frozen_robustness_report(robust: pd.DataFrame, primary: dict[str, Any]
     ap = robust[robust.metric == "pr_auc"].iloc[0]
     text = f"""# Frozen-model robustness
 
-The exact development analysis XGBoost/Feature Set C configuration was evaluated without tuning on 25 development-only resamples: five stratified folds repeated over five fixed seeds. The candidate period `1404-2` was not scored. Validation rows retained natural prevalence and all preprocessing was fitted inside the training fold.
+The frozen development XGBoost/Feature Set C configuration was evaluated without tuning on 25 development-only resamples: five stratified folds repeated over five fixed seeds. The candidate period `1404-2` was not scored. Validation rows retained natural prevalence and all preprocessing was fitted inside the training fold.
 
 Average Precision: mean `{ap['mean']:.6f}`, median `{ap['median']:.6f}`, SD `{ap['sd']:.6f}`, IQR `{ap['iqr']:.6f}`, 95% CI `{ap['ci_low']:.6f}` to `{ap['ci_high']:.6f}`, minimum `{ap['min']:.6f}`, maximum `{ap['max']:.6f}`. The prevalence/no-skill reference is `{prevalence:.6f}`.
 
@@ -1271,8 +1271,8 @@ def finalize_existing() -> None:
     metadata = json.loads((ROOT / "models" / "development" / "selected_model_metadata.json").read_text(encoding="utf-8"))
     PARAMS = dict(metadata["parameters"]["XGBoost"])
     raw = pd.read_csv(RAW, dtype="string", keep_default_na=False, na_filter=False, low_memory=False)
-    raw_hash = P3.raw_sha256(RAW)
-    clean, _, _, stats, _ = P3.reconstruct_dataset(raw)
+    raw_hash = DEV.raw_sha256(RAW)
+    clean, _, _, stats, _ = DEV.reconstruct_dataset(raw)
     dev = clean.loc[clean["Year"].isin(["1402", "1403", "1404"])].copy()
     y = dev["Label"].astype(int)
     fold_artifact = pd.read_parquet(ARTIFACT / "frozen_model_fold_results.parquet")
@@ -1318,14 +1318,14 @@ def finalize_existing() -> None:
     joblib.dump(final_pipeline, MODEL / "final_primary_pipeline.joblib", compress=3)
     write_json(MODEL / "final_model_metadata.json", {"source_pipeline": "models/development/selected_primary_pipeline.joblib", "model": "XGBoost", "feature_set": "C", "fit_rows": len(dev), "locked_period_supplied": False, "calibration": "NO RECALIBRATION", "operating_policy": "top 5% primary; 1/2/5/10% reported"})
     write_json(REPORT / "ROBUSTNESS_RUN_MANIFEST.json", {"stage": "robustness analysis", "raw_sha256": raw_hash, "full_n": int(stats["full_n"]), "full_positive_n": int(stats["full_positive_n"]), "development_n": len(dev), "development_positive_n": int(y.sum()), "locked_candidate_period": LOCKED_YEAR, "locked_test_touched": False, "robustness_folds": N_SPLITS, "robustness_seeds": ROBUSTNESS_SEEDS, "bootstrap_n": BOOTSTRAP_N, "negative_control_seeds": NEGATIVE_CONTROL_SEEDS, "frozen_model": "XGBoost / C", "final_model_decision": final_model, "no_refit_after_robustness": True})
-    _LOGGER.info("robustness analysis finalization complete: %s; q1=%s; locked_test_touched=false", final_model, q1)
+    _LOGGER.info("Robustness analysis finalization complete: %s; q1=%s; locked_test_touched=false", final_model, q1)
 
 
 def main() -> None:
     global PARAMS, SPLITS, _LOGGER
     ensure_dirs()
     _LOGGER = configure_logging()
-    _LOGGER.info("robustness analysis start: frozen robustness only")
+    _LOGGER.info("Robustness analysis start: frozen robustness only")
     frozen = yaml.safe_load((CONFIG / "frozen_model_candidate_v1.yaml").read_text(encoding="utf-8"))
     metadata = json.loads((ROOT / "models" / "development" / "selected_model_metadata.json").read_text(encoding="utf-8"))
     assert frozen["model"]["family"] == metadata["primary_model"] == "XGBoost"
@@ -1334,8 +1334,8 @@ def main() -> None:
     assert PARAMS == {"learning_rate": 0.03, "max_depth": 5, "min_child_weight": 1, "n_estimators": 220}
 
     raw = pd.read_csv(RAW, dtype="string", keep_default_na=False, na_filter=False, low_memory=False)
-    raw_hash = P3.raw_sha256(RAW)
-    clean, _, _, stats, _ = P3.reconstruct_dataset(raw)
+    raw_hash = DEV.raw_sha256(RAW)
+    clean, _, _, stats, _ = DEV.reconstruct_dataset(raw)
     dev_mask = clean["Year"].isin(["1402", "1403", "1404"])
     dev = clean.loc[dev_mask].copy()
     y = dev["Label"].astype(int)
@@ -1343,7 +1343,7 @@ def main() -> None:
     assert not dev["Year"].eq(LOCKED_YEAR).any()
     SPLITS = make_splits(y)
     assert len(SPLITS) == 25
-    write_text(REPORT / "00_execution_boundary.md", "# robustness analysis execution boundary\n\nAll robustness analysis model calculations use only Year 1402, 1403, and 1404. `1404-2` is excluded from every fit, prediction, threshold calculation, performance table, bootstrap, subgroup, period, and explainability calculation. The frozen candidate and five-fold/five-seed design were recorded before execution.")
+    write_text(REPORT / "00_execution_boundary.md", "# Robustness analysis execution boundary\n\nAll robustness-analysis model calculations use only Year 1402, 1403, and 1404. `1404-2` is excluded from every fit, prediction, threshold calculation, performance table, bootstrap, subgroup, period, and explainability calculation. The frozen candidate and five-fold/five-seed design were recorded before execution.")
 
     runs: dict[str, dict[str, Any]] = {}
     runs["XGBoost/C"] = run_fixed("XGBoost", "C", dev, y, PARAMS, SPLITS, keep_predictions=True, collect_shap=True)
@@ -1411,13 +1411,13 @@ def main() -> None:
     write_freeze_configs(enrichment, pooled_alert, calibration)
     write_master_report(summary, robust, enrichment, simple_table, incremental, missingness_status, complaint_status, calibration, pr, alert, dca_status, subgroup_status, period_status, bootstrap, shap_detail, error_status, negative_status, duplicate_status)
 
-    # Copy the already fitted development analysis development pipeline as the frozen
-    # robustness analysis reference; this is not a new fit and receives no locked rows.
+    # Copy the already fitted development pipeline as the frozen
+    # robustness reference; this is not a new fit and receives no locked rows.
     final_pipeline = joblib.load(ROOT / "models" / "development" / "selected_primary_pipeline.joblib")
     joblib.dump(final_pipeline, MODEL / "final_primary_pipeline.joblib", compress=3)
     write_json(MODEL / "final_model_metadata.json", {"source_pipeline": "models/development/selected_primary_pipeline.joblib", "model": "XGBoost", "feature_set": "C", "fit_rows": 95997, "locked_period_supplied": False, "calibration": "NO RECALIBRATION", "operating_policy": "top 5% primary; 1/2/5/10% reported"})
     write_json(REPORT / "ROBUSTNESS_RUN_MANIFEST.json", {"stage": "robustness analysis", "raw_sha256": raw_hash, "full_n": int(stats["full_n"]), "full_positive_n": int(stats["full_positive_n"]), "development_n": len(dev), "development_positive_n": int(y.sum()), "locked_candidate_period": LOCKED_YEAR, "locked_test_touched": False, "robustness_folds": N_SPLITS, "robustness_seeds": ROBUSTNESS_SEEDS, "bootstrap_n": BOOTSTRAP_N, "negative_control_seeds": NEGATIVE_CONTROL_SEEDS, "frozen_model": "XGBoost / C", "final_model_decision": final_model, "no_refit_after_robustness": True})
-    _LOGGER.info("robustness analysis complete: %s; q1=%s; locked_test_touched=false", final_model, q1)
+    _LOGGER.info("Robustness analysis complete: %s; q1=%s; locked_test_touched=false", final_model, q1)
 
 
 if __name__ == "__main__":

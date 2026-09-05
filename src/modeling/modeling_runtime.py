@@ -1,4 +1,4 @@
-"""Runtime helpers for the development analysis development analysis.
+"""Runtime helpers for the development analysis.
 
 The module intentionally contains no data-loading side effects.  All learned
 transformations are fitted by the estimator/pipeline on the current training

@@ -1,4 +1,4 @@
-"""Reproducible development analysis development analysis.
+"""Reproducible development analysis.
 
 This runner deliberately excludes the unresolved locked candidate period
 ``1404-2`` from every model fit, tuning operation, calibration operation,
@@ -353,7 +353,7 @@ def write_reconstruction_report(stats: dict[str, Any], clean: pd.DataFrame, raw_
     label_counts = clean["Label"].value_counts(dropna=False).to_dict()
     dev_mask = clean["Year"].isin(["1402", "1403", "1404"])
     candidate_mask = clean["Year"].eq(LOCKED_YEAR)
-    text = f"""# development analysis analytic dataset reconstruction
+    text = f"""# Development analytic dataset reconstruction
 
 ## Status
 
@@ -377,7 +377,7 @@ Expected full-cohort counts were 119,743 rows, 1,567 positives, and approximatel
 
 Observed Year counts are recorded for audit only: `{json.dumps({str(k): int(v) for k, v in year_counts.items()}, ensure_ascii=False)}`.
 
-The development analysis development pool contains `{int(dev_mask.sum()):,}` rows and `{int((clean.loc[dev_mask, 'Label'] == 1).sum()):,}` positives from `1402`, `1403`, and `1404`. The unresolved candidate period `1404-2` contains `{int(candidate_mask.sum()):,}` rows and `{int((clean.loc[candidate_mask, 'Label'] == 1).sum()):,}` positives, but is excluded from every model fit, tuning/calibration operation, prediction artifact, and result table.
+The development pool contains `{int(dev_mask.sum()):,}` rows and `{int((clean.loc[dev_mask, 'Label'] == 1).sum()):,}` positives from `1402`, `1403`, and `1404`. The unresolved candidate period `1404-2` contains `{int(candidate_mask.sum()):,}` rows and `{int((clean.loc[candidate_mask, 'Label'] == 1).sum()):,}` positives, but is excluded from every model fit, tuning/calibration operation, prediction artifact, and result table.
 
 ## Deterministic cleaning and QC
 
@@ -407,7 +407,7 @@ def write_complaint_mapping(raw: pd.DataFrame, clean: pd.DataFrame) -> None:
     rows.to_csv(TABLE / "complaint_group_mapping.csv", index=False, encoding="utf-8-sig")
     group_counts = clean["complaint_group"].value_counts(dropna=False).to_dict()
     infection_n = int(clean["complaint_infection_related"].sum())
-    text = f"""# development analysis complaint grouping
+    text = f"""# Development complaint grouping
 
 Feature Set D is sensitivity-only. The grouping was frozen before any model performance was examined and was generated without `Label`, mutual information, outcome-guided term selection, embeddings, an LLM API, or an external paid API.
 
@@ -435,7 +435,7 @@ def write_validation_plan(clean: pd.DataFrame, splits: list[dict[str, Any]]) -> 
     n = int(dev_mask.sum())
     pos = int((clean.loc[dev_mask, "Label"] == 1).sum())
     split_lines = "\n".join(f"- Seed `{s['seed']}`, fold `{s['fold']}`: {len(s['train_idx']):,} training rows / {len(s['val_idx']):,} validation rows" for s in splits)
-    text = f"""# development analysis validation execution plan
+    text = f"""# Development validation execution plan
 
 This plan was written before tuning and model fitting.
 
@@ -466,13 +466,13 @@ def write_pre_model_protocol_docs() -> None:
         for parameter, values in space.items():
             rows.append({"model_family": model, "tuning_scope": "Feature Set B only; development-only two-fold CV", "parameter": parameter, "candidate_values": json.dumps(values, ensure_ascii=False)})
     pd.DataFrame(rows).to_csv(TABLE / "hyperparameter_search_spaces.csv", index=False, encoding="utf-8-sig")
-    write_text(REPORT / "04_model_tuning_protocol.md", """# development analysis model-tuning protocol
+    write_text(REPORT / "04_model_tuning_protocol.md", """# Development model-tuning protocol
 
 This protocol artifact was written before model fitting. Tuning is bounded and development-only: at most three deterministic `ParameterSampler` configurations per required family are scored by two-fold stratified cross-validation on Feature Set B. The locked candidate period is not loaded into tuning. Selected family parameters are then reused for the matching Feature Set A/B/C primary comparisons and the corresponding class-weight sensitivity.
 
 Search spaces are recorded in `tables/development/hyperparameter_search_spaces.csv`. No deep tabular model or architecture search is included. The primary optimization metric is Average Precision / PR-AUC. The final report appends the tested configurations and scores.
 """)
-    write_text(REPORT / "08_model_selection_policy.md", """# development analysis model-selection policy
+    write_text(REPORT / "08_model_selection_policy.md", """# Development model-selection policy
 
 This policy was written before model performance was examined. Selection is not based only on the largest PR-AUC. Among the primary no-resampling candidates, compute a composite rank using: mean PR-AUC (40%), mean Brier score (25%), calibration-slope closeness to 1 (15%), fold PR-AUC stability (15%), and model/feature complexity (5%). Lower rank is better for Brier, slope deviation, variability, and complexity. The candidate with the strongest composite is selected; the highest-PR-AUC and lowest-Brier candidates are reported separately.
 
@@ -643,7 +643,7 @@ def summarize_run(pred: pd.DataFrame, folds: pd.DataFrame, model: str, label: st
 def write_tuning_results(tuning_rows: list[pd.DataFrame]) -> None:
     combined = pd.concat(tuning_rows, ignore_index=True) if tuning_rows else pd.DataFrame()
     combined.to_csv(TABLE / "tuning_results.csv", index=False, encoding="utf-8-sig")
-    text = "# development analysis model-tuning execution\n\n"
+    text = "# Development model-tuning execution\n\n"
     text += "Bounded two-fold development-only randomized searches were executed on Feature Set B. The locked candidate period was excluded.\n\n"
     if not combined.empty:
         for model, group in combined.groupby("model_family"):
@@ -895,7 +895,7 @@ def save_plots(primary_preds: dict[tuple[str, str], pd.DataFrame], selected_key:
     first = next(iter(primary_preds.values()))
     baseline = float(pooled_predictions(first)["y_true"].mean())
     ax.axhline(baseline, color="black", ls="--", lw=1, label=f"no-skill={baseline:.3f}")
-    ax.set(xlabel="Recall", ylabel="Precision", title="development analysis internal precision-recall curves")
+    ax.set(xlabel="Recall", ylabel="Precision", title="Development internal precision-recall curves")
     ax.legend(fontsize=7, ncol=2)
     fig.tight_layout(); fig.savefig(FIGURE / "pr_curves.png", dpi=180); fig.savefig(FIGURE / "pr_curves.pdf"); plt.close(fig)
 
@@ -907,7 +907,7 @@ def save_plots(primary_preds: dict[tuple[str, str], pd.DataFrame], selected_key:
         auc = __import__("sklearn.metrics", fromlist=["roc_auc_score"]).roc_auc_score(pooled["y_true"], pooled["predicted_probability"])
         ax.plot(fpr, tpr, lw=1.2, label=f"{model} / {label} AUROC={auc:.3f}")
     ax.plot([0, 1], [0, 1], "k--", lw=1)
-    ax.set(xlabel="False-positive rate", ylabel="True-positive rate", title="development analysis internal ROC curves")
+    ax.set(xlabel="False-positive rate", ylabel="True-positive rate", title="Development internal ROC curves")
     ax.legend(fontsize=7, ncol=2)
     fig.tight_layout(); fig.savefig(FIGURE / "roc_curves.png", dpi=180); fig.savefig(FIGURE / "roc_curves.pdf"); plt.close(fig)
 
@@ -954,14 +954,14 @@ def write_feature_set_table(clean: pd.DataFrame) -> None:
 def write_metric_tables(summary: pd.DataFrame, selected_model: str, selected_set: str, missingness_table: pd.DataFrame, imbalance_table: pd.DataFrame, calibration_table: pd.DataFrame, alert_table: pd.DataFrame, subgroup_table: pd.DataFrame) -> None:
     summary_b = summary[(summary["feature_set"] == "B") & (summary["strategy"] == "none")].copy()
     summary_c = summary[(summary["feature_set"] == "C") & (summary["strategy"] == "none")].copy()
-    summary_b.to_csv(TABLE / "table_P3-2_model_comparison_feature_set_B.csv", index=False, encoding="utf-8-sig")
-    summary_c.to_csv(TABLE / "table_P3-3_model_comparison_feature_set_C.csv", index=False, encoding="utf-8-sig")
-    missingness_table.to_csv(TABLE / "table_P3-4_missingness_ablation.csv", index=False, encoding="utf-8-sig")
-    imbalance_table.to_csv(TABLE / "table_P3-5_imbalance_strategy_comparison.csv", index=False, encoding="utf-8-sig")
-    calibration_table.to_csv(TABLE / "table_P3-6_calibration_metrics.csv", index=False, encoding="utf-8-sig")
-    alert_table.to_csv(TABLE / "table_P3-7_alert_budget_analysis.csv", index=False, encoding="utf-8-sig")
-    subgroup_table.to_csv(TABLE / "table_P3-8_subgroup_robustness_summary.csv", index=False, encoding="utf-8-sig")
-    write_text(REPORT / "table_P3-1_feature_sets_and_missingness.md", """# Table P3-1 - Feature sets and missingness
+    summary_b.to_csv(TABLE / "table_dev_2_model_comparison_feature_set_B.csv", index=False, encoding="utf-8-sig")
+    summary_c.to_csv(TABLE / "table_dev_3_model_comparison_feature_set_C.csv", index=False, encoding="utf-8-sig")
+    missingness_table.to_csv(TABLE / "table_dev_4_missingness_ablation.csv", index=False, encoding="utf-8-sig")
+    imbalance_table.to_csv(TABLE / "table_dev_5_imbalance_strategy_comparison.csv", index=False, encoding="utf-8-sig")
+    calibration_table.to_csv(TABLE / "table_dev_6_calibration_metrics.csv", index=False, encoding="utf-8-sig")
+    alert_table.to_csv(TABLE / "table_dev_7_alert_budget_analysis.csv", index=False, encoding="utf-8-sig")
+    subgroup_table.to_csv(TABLE / "table_dev_8_subgroup_robustness_summary.csv", index=False, encoding="utf-8-sig")
+    write_text(REPORT / "table_dev_1_feature_sets_and_missingness.md", """# Development Table 1 - Feature sets and missingness
 
 See `tables/development/feature_sets_and_missingness.csv`. Feature Sets A-C are the primary hierarchy; Feature Set D is complaint sensitivity-only. M0-M4 are the pre-specified missingness representations.
 """)
@@ -1139,7 +1139,7 @@ def build_master_report(
     top5 = alert_table.loc[alert_table.budget_pct == 5].iloc[0]
     period_delta = float(period_table.pr_auc.max() - period_table.pr_auc.min()) if not period_table.empty else float("nan")
     subgroup_reportable = subgroup_table[subgroup_table.reporting_status == "reportable exploratory"]
-    text = f"""# development analysis Master Model Development Report
+    text = f"""# Model Development Master Report
 
 **Status:** `PASS WITH WARNINGS`  
 **Protocol:** pre-model protocol / `STUDY_PROTOCOL_v2.md`  
@@ -1148,7 +1148,7 @@ def build_master_report(
 
 ## 1. Executive summary
 
-development analysis completed the authorized development analysis without using `1404-2`. The full source reconstruction matched 119,743 rows and 1,567 positives; the modeled development pool contains `{int(clean[clean.Year != LOCKED_YEAR].shape[0]):,}` rows and `{int(clean.loc[clean.Year != LOCKED_YEAR, 'Label'].sum()):,}` positives. The primary candidate selected by the pre-specified multi-criteria policy is `{selected_key}` with development mean AP `{selected['mean_average_precision']:.6f}` and mean Brier `{selected['mean_brier']:.6f}`. This is internal evidence only; outcome definition, field-level timing, patient independence, and external validation remain unresolved.
+The development analysis was completed without using `1404-2`. The full source reconstruction matched 119,743 rows and 1,567 positives; the modeled development pool contains `{int(clean[clean.Year != LOCKED_YEAR].shape[0]):,}` rows and `{int(clean.loc[clean.Year != LOCKED_YEAR, 'Label'].sum()):,}` positives. The primary candidate selected by the pre-specified multi-criteria policy is `{selected_key}` with development mean AP `{selected['mean_average_precision']:.6f}` and mean Brier `{selected['mean_brier']:.6f}`. This is internal evidence only; outcome definition, field-level timing, patient independence, and external validation remain unresolved.
 
 ## 2. Data/cohort verification
 
@@ -1176,7 +1176,7 @@ Bounded two-fold Feature Set B searches used at most three sampled configuration
 
 ## 8. Feature-set comparison
 
-All required families were compared on A, B, and C with identical repeated folds. B and C tables are in `tables/development/table_P3-2_model_comparison_feature_set_B.csv` and `tables/development/table_P3-3_model_comparison_feature_set_C.csv`.
+All required families were compared on A, B, and C with identical repeated folds. B and C tables are in `tables/development/table_dev_2_model_comparison_feature_set_B.csv` and `tables/development/table_dev_3_model_comparison_feature_set_C.csv`.
 
 ## 9. Missingness ablation
 
@@ -1244,7 +1244,7 @@ Q1 signal: **{q1_signal}**. CBM readiness: **{cbm}**. AI in Medicine readiness: 
 
 ## 25. Exact robustness analysis requirements
 
-robustness analysis recommendation: **{robustness}**. If continued, robustness analysis must focus on robustness, clinical reliability, final model freezing, locked-period governance after temporal clarification, uncertainty, and transparent handling of all unresolved outcome/timing/patient-independence limitations. It must not erase this development evidence or retroactively tune on `1404-2`.
+Robustness-analysis recommendation: **{robustness}**. If continued, the robustness analysis must focus on robustness, clinical reliability, final model freezing, locked-period governance after temporal clarification, uncertainty, and transparent handling of all unresolved outcome/timing/patient-independence limitations. It must not erase this development evidence or retroactively tune on `1404-2`.
 
 ## Machine-readable outputs
 
@@ -1429,8 +1429,8 @@ def finalize_existing() -> None:
         "fit_log_timezone": "Asia/Tehran",
     }
     write_json(REPORT / "DEVELOPMENT_RUN_MANIFEST.json", manifest)
-    write_text(LOG_DIR / "development_completion.txt", f"development analysis completed at {datetime.now(timezone.utc).isoformat()} with locked candidate touched=false.\n")
-    logger.info("development analysis finalization complete; selected=%s/%s q1=%s", selected_model, selected_set, q1_signal)
+    write_text(LOG_DIR / "development_completion.txt", f"Development analysis completed at {datetime.now(timezone.utc).isoformat()} with locked candidate touched=false.\n")
+    logger.info("Development analysis finalization complete; selected=%s/%s q1=%s", selected_model, selected_set, q1_signal)
 
 
 def main() -> None:
@@ -1438,7 +1438,7 @@ def main() -> None:
     ensure_dirs()
     logger = configure_logging()
     start = datetime.now(timezone.utc)
-    logger.info("development analysis start; root=%s", ROOT)
+    logger.info("Development analysis start; root=%s", ROOT)
     raw_hash = raw_sha256(RAW)
     raw = pd.read_csv(RAW, dtype="string", keep_default_na=False, na_filter=False, low_memory=False)
     clean, qc, _, stats, _ = reconstruct_dataset(raw)
@@ -1630,8 +1630,8 @@ def main() -> None:
         "artifacts": {"predictions": "artifacts/development/predictions_internal.parquet", "fold_results": "artifacts/development/fold_results.parquet", "primary_pipeline": "models/development/selected_primary_pipeline.joblib"},
     }
     write_json(REPORT / "DEVELOPMENT_RUN_MANIFEST.json", manifest)
-    write_text(LOG_DIR / "development_completion.txt", f"development analysis completed at {datetime.now(timezone.utc).isoformat()} with locked candidate touched=false.\n")
-    logger.info("development analysis complete; selected=%s/%s q1=%s", selected_model, selected_set, q1_signal)
+    write_text(LOG_DIR / "development_completion.txt", f"Development analysis completed at {datetime.now(timezone.utc).isoformat()} with locked candidate touched=false.\n")
+    logger.info("Development analysis complete; selected=%s/%s q1=%s", selected_model, selected_set, q1_signal)
 
 
 if __name__ == "__main__":
