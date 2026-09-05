@@ -1,5 +1,5 @@
-version: prompt4-final-test-execution-policy-v1
-status: FROZEN — DO NOT EXECUTE IN PROMPT 4
+version: final-test-execution-policy-v1
+status: FROZEN — DO NOT EXECUTE DURING ROBUSTNESS ANALYSIS
 locked_candidate_period: 1404-2
 expected_rows: 23746
 held_out_period_allowed: true

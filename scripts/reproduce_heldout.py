@@ -15,8 +15,8 @@ import pandas as pd
 
 from _common import require_data
 
-import prompt3_runtime as runtime
-import run_prompt3 as analysis
+import modeling_runtime as runtime
+import development_analysis as analysis
 
 FROZEN_PARAMS = {
     "learning_rate": 0.03,

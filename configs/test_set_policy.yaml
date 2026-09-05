@@ -1,4 +1,4 @@
-version: "prompt2b-v2"
+version: "pre-model-protocol-v2"
 TEST_SET_LOCKED: true
 test_set_definable_now: false
 test_set_boundary: "NOT DEFINABLE AS A TRUE TEMPORAL TEST FROM THE RELEASE"

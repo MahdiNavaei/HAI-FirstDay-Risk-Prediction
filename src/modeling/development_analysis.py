@@ -1,4 +1,4 @@
-"""Reproducible Prompt 3 development analysis.
+"""Reproducible development analysis.
 
 This runner deliberately excludes the unresolved locked candidate period
 ``1404-2`` from every model fit, tuning operation, calibration operation,
@@ -37,7 +37,7 @@ from sklearn.calibration import CalibratedClassifierCV, calibration_curve
 from sklearn.metrics import average_precision_score, precision_recall_curve, roc_curve
 from sklearn.model_selection import ParameterSampler, StratifiedKFold
 
-from prompt3_runtime import (
+from modeling_runtime import (
     BASE_FEATURES_A,
     BASE_FEATURES_B,
     CATEGORICAL_FEATURES_B,
@@ -61,12 +61,12 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 ROOT = Path(__file__).resolve().parents[2]
 RAW = ROOT / "data" / "raw" / "Hospital_infection_data.csv"
-REPORT = ROOT / "reports" / "prompt3"
-TABLE = ROOT / "tables" / "prompt3"
-FIGURE = ROOT / "figures" / "prompt3"
-MODEL = ROOT / "models" / "prompt3"
-ARTIFACT = ROOT / "artifacts" / "prompt3"
-LOG_DIR = ROOT / "logs" / "prompt3"
+REPORT = ROOT / "reports" / "development"
+TABLE = ROOT / "tables" / "development"
+FIGURE = ROOT / "figures" / "development"
+MODEL = ROOT / "models" / "development"
+ARTIFACT = ROOT / "artifacts" / "development"
+LOG_DIR = ROOT / "logs" / "development"
 DERIVED = ROOT / "data" / "derived"
 
 SEEDS = [42, 2024]
@@ -77,7 +77,7 @@ EXPECTED_FULL_POSITIVE_N = 1567
 EXPECTED_FULL_PREVALENCE = EXPECTED_FULL_POSITIVE_N / EXPECTED_FULL_N
 EXPECTED_RBC_DATE_LIKE_N = 8134
 
-# These rates are the frozen Prompt 2 audit values used only to define the
+# These rates are the frozen data-quality protocol audit values used only to define the
 # required ablation subsets.  They are not estimated from model outcomes.
 DOCUMENTED_MISSING_PCT = {
     "Age": 0.0058458532,
@@ -152,13 +152,13 @@ def write_json(path: Path, value: Any) -> None:
 
 
 def configure_logging() -> logging.Logger:
-    logger = logging.getLogger("prompt3")
+    logger = logging.getLogger("development")
     logger.setLevel(logging.INFO)
     logger.handlers.clear()
     formatter = logging.Formatter("%(asctime)sZ %(levelname)s %(message)s", datefmt="%Y-%m-%dT%H:%M:%S")
     stream = logging.StreamHandler(sys.stdout)
     stream.setFormatter(formatter)
-    file_handler = logging.FileHandler(LOG_DIR / "prompt3_run.log", encoding="utf-8")
+    file_handler = logging.FileHandler(LOG_DIR / "development_run.log", encoding="utf-8")
     file_handler.setFormatter(formatter)
     logger.addHandler(stream)
     logger.addHandler(file_handler)
@@ -275,7 +275,7 @@ def reconstruct_dataset(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, 
         if lower is not None and upper is not None:
             out_of_range = numeric.notna() & ((numeric < lower) | (numeric > upper))
         clean[field] = numeric
-        # Prompt 2 explicitly locks malformed/out-of-range temperature and
+        # data-quality protocol explicitly locks malformed/out-of-range temperature and
         # invalid Age/Triage values out of their derived modeling values.
         if field in {"Age", "Triage level", "T"}:
             clean[field] = clean[field].mask(out_of_range)
@@ -310,7 +310,7 @@ def reconstruct_dataset(raw: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, 
     clean["missing_count_B"] = clean[BASE_FEATURES_B].isna().sum(axis=1)
 
     rbc_numeric = clean["RBC"]
-    # Match the Prompt 2 forensic rule: Excel-style serial screening used
+    # Match the data-quality protocol forensic rule: Excel-style serial screening used
     # 30,000-60,000; the 36,526 value decodes to 2000-01-01 and is included.
     qc["RBC__date_serial_like"] = rbc_numeric.between(30000, 60000, inclusive="both")
     stats = {
@@ -345,7 +345,7 @@ def write_analytic_artifact(raw: pd.DataFrame, clean: pd.DataFrame, qc: pd.DataF
     for col in qc_dev.columns:
         artifact[f"qc__{col}"] = qc_dev[col].fillna(False).astype(bool)
     artifact["source_sha256"] = raw_hash
-    artifact.to_parquet(DERIVED / "prompt3_analytic_dataset.parquet", index=False)
+    artifact.to_parquet(DERIVED / "development_analytic_dataset.parquet", index=False)
 
 
 def write_reconstruction_report(stats: dict[str, Any], clean: pd.DataFrame, raw_hash: str) -> None:
@@ -353,11 +353,11 @@ def write_reconstruction_report(stats: dict[str, Any], clean: pd.DataFrame, raw_
     label_counts = clean["Label"].value_counts(dropna=False).to_dict()
     dev_mask = clean["Year"].isin(["1402", "1403", "1404"])
     candidate_mask = clean["Year"].eq(LOCKED_YEAR)
-    text = f"""# Prompt 3 analytic dataset reconstruction
+    text = f"""# Development analytic dataset reconstruction
 
 ## Status
 
-`PASS`: deterministic reconstruction matched the binding Prompt 2B expectations. No raw file was overwritten, and no model or test-set performance was evaluated during reconstruction.
+`PASS`: deterministic reconstruction matched the binding pre-model protocol expectations. No raw file was overwritten, and no model or test-set performance was evaluated during reconstruction.
 
 ## Source and counts
 
@@ -377,7 +377,7 @@ Expected full-cohort counts were 119,743 rows, 1,567 positives, and approximatel
 
 Observed Year counts are recorded for audit only: `{json.dumps({str(k): int(v) for k, v in year_counts.items()}, ensure_ascii=False)}`.
 
-The Prompt 3 development pool contains `{int(dev_mask.sum()):,}` rows and `{int((clean.loc[dev_mask, 'Label'] == 1).sum()):,}` positives from `1402`, `1403`, and `1404`. The unresolved candidate period `1404-2` contains `{int(candidate_mask.sum()):,}` rows and `{int((clean.loc[candidate_mask, 'Label'] == 1).sum()):,}` positives, but is excluded from every model fit, tuning/calibration operation, prediction artifact, and result table.
+The development pool contains `{int(dev_mask.sum()):,}` rows and `{int((clean.loc[dev_mask, 'Label'] == 1).sum()):,}` positives from `1402`, `1403`, and `1404`. The unresolved candidate period `1404-2` contains `{int(candidate_mask.sum()):,}` rows and `{int((clean.loc[candidate_mask, 'Label'] == 1).sum()):,}` positives, but is excluded from every model fit, tuning/calibration operation, prediction artifact, and result table.
 
 ## Deterministic cleaning and QC
 
@@ -407,11 +407,11 @@ def write_complaint_mapping(raw: pd.DataFrame, clean: pd.DataFrame) -> None:
     rows.to_csv(TABLE / "complaint_group_mapping.csv", index=False, encoding="utf-8-sig")
     group_counts = clean["complaint_group"].value_counts(dropna=False).to_dict()
     infection_n = int(clean["complaint_infection_related"].sum())
-    text = f"""# Prompt 3 complaint grouping
+    text = f"""# Development complaint grouping
 
 Feature Set D is sensitivity-only. The grouping was frozen before any model performance was examined and was generated without `Label`, mutual information, outcome-guided term selection, embeddings, an LLM API, or an external paid API.
 
-The mapping is a deterministic substring lexicon over Unicode-normalized, case-folded raw complaint text. The raw complaint, normalized text, group, infection-related flag, mapping rule, and row count are preserved in `tables/prompt3/complaint_group_mapping.csv`.
+The mapping is a deterministic substring lexicon over Unicode-normalized, case-folded raw complaint text. The raw complaint, normalized text, group, infection-related flag, mapping rule, and row count are preserved in `tables/development/complaint_group_mapping.csv`.
 
 Infection-related groups are explicitly flagged. The full row-level group distribution is: `{json.dumps({str(k): int(v) for k, v in group_counts.items()}, ensure_ascii=False)}`. Infection-related rows: `{infection_n:,}`. Blank complaints are assigned to `missing`; unmatched text is assigned to `other`.
 
@@ -435,7 +435,7 @@ def write_validation_plan(clean: pd.DataFrame, splits: list[dict[str, Any]]) -> 
     n = int(dev_mask.sum())
     pos = int((clean.loc[dev_mask, "Label"] == 1).sum())
     split_lines = "\n".join(f"- Seed `{s['seed']}`, fold `{s['fold']}`: {len(s['train_idx']):,} training rows / {len(s['val_idx']):,} validation rows" for s in splits)
-    text = f"""# Prompt 3 validation execution plan
+    text = f"""# Development validation execution plan
 
 This plan was written before tuning and model fitting.
 
@@ -466,13 +466,13 @@ def write_pre_model_protocol_docs() -> None:
         for parameter, values in space.items():
             rows.append({"model_family": model, "tuning_scope": "Feature Set B only; development-only two-fold CV", "parameter": parameter, "candidate_values": json.dumps(values, ensure_ascii=False)})
     pd.DataFrame(rows).to_csv(TABLE / "hyperparameter_search_spaces.csv", index=False, encoding="utf-8-sig")
-    write_text(REPORT / "04_model_tuning_protocol.md", """# Prompt 3 model-tuning protocol
+    write_text(REPORT / "04_model_tuning_protocol.md", """# Development model-tuning protocol
 
 This protocol artifact was written before model fitting. Tuning is bounded and development-only: at most three deterministic `ParameterSampler` configurations per required family are scored by two-fold stratified cross-validation on Feature Set B. The locked candidate period is not loaded into tuning. Selected family parameters are then reused for the matching Feature Set A/B/C primary comparisons and the corresponding class-weight sensitivity.
 
-Search spaces are recorded in `tables/prompt3/hyperparameter_search_spaces.csv`. No deep tabular model or architecture search is included. The primary optimization metric is Average Precision / PR-AUC. The final report appends the tested configurations and scores.
+Search spaces are recorded in `tables/development/hyperparameter_search_spaces.csv`. No deep tabular model or architecture search is included. The primary optimization metric is Average Precision / PR-AUC. The final report appends the tested configurations and scores.
 """)
-    write_text(REPORT / "08_model_selection_policy.md", """# Prompt 3 model-selection policy
+    write_text(REPORT / "08_model_selection_policy.md", """# Development model-selection policy
 
 This policy was written before model performance was examined. Selection is not based only on the largest PR-AUC. Among the primary no-resampling candidates, compute a composite rank using: mean PR-AUC (40%), mean Brier score (25%), calibration-slope closeness to 1 (15%), fold PR-AUC stability (15%), and model/feature complexity (5%). Lower rank is better for Brier, slope deviation, variability, and complexity. The candidate with the strongest composite is selected; the highest-PR-AUC and lowest-Brier candidates are reported separately.
 
@@ -643,7 +643,7 @@ def summarize_run(pred: pd.DataFrame, folds: pd.DataFrame, model: str, label: st
 def write_tuning_results(tuning_rows: list[pd.DataFrame]) -> None:
     combined = pd.concat(tuning_rows, ignore_index=True) if tuning_rows else pd.DataFrame()
     combined.to_csv(TABLE / "tuning_results.csv", index=False, encoding="utf-8-sig")
-    text = "# Prompt 3 model-tuning execution\n\n"
+    text = "# Development model-tuning execution\n\n"
     text += "Bounded two-fold development-only randomized searches were executed on Feature Set B. The locked candidate period was excluded.\n\n"
     if not combined.empty:
         for model, group in combined.groupby("model_family"):
@@ -864,7 +864,7 @@ def generate_shap_outputs(selected_pipeline: Any, X: pd.DataFrame, selected_mode
         top_name = str(table.iloc[0]["feature"])
         top_idx = int(table.index[0])
         fig, ax = plt.subplots(figsize=(8, 6)); ax.scatter(sample_for_shap[:, top_idx], values[:, top_idx], s=8, alpha=0.18, color="#e15759"); ax.set_xlabel(top_name); ax.set_ylabel("SHAP value"); ax.set_title(f"SHAP dependence diagnostic: {top_name}"); fig.tight_layout(); fig.savefig(FIGURE / "explainability_shap_dependence_top.png", dpi=180); fig.savefig(FIGURE / "explainability_shap_dependence_top.pdf"); plt.close(fig)
-        write_text(REPORT / "shap_status.md", f"""SHAP was run on a fixed random sample of `{sample_n:,}` non-candidate development rows for `{selected_model}` / Feature Set `{selected_set}` using `{shap_backend}`. The summary is fold-independent because it uses the saved full-development candidate only as a development diagnostic; it is not test evidence. Global importance is in `tables/prompt3/shap_global_importance.csv`; focused summary/dependence figures are in `figures/prompt3/explainability_shap_summary.*` and `explainability_shap_dependence_top.*`. Directionality is an associative transformed-feature diagnostic, not causality.
+        write_text(REPORT / "shap_status.md", f"""SHAP was run on a fixed random sample of `{sample_n:,}` non-candidate development rows for `{selected_model}` / Feature Set `{selected_set}` using `{shap_backend}`. The summary is fold-independent because it uses the saved full-development candidate only as a development diagnostic; it is not test evidence. Global importance is in `tables/development/shap_global_importance.csv`; focused summary/dependence figures are in `figures/development/explainability_shap_summary.*` and `explainability_shap_dependence_top.*`. Directionality is an associative transformed-feature diagnostic, not causality.
 """)
         logger.info("SHAP outputs written for %s/%s on n=%d", selected_model, selected_set, sample_n)
     except Exception as exc:
@@ -895,7 +895,7 @@ def save_plots(primary_preds: dict[tuple[str, str], pd.DataFrame], selected_key:
     first = next(iter(primary_preds.values()))
     baseline = float(pooled_predictions(first)["y_true"].mean())
     ax.axhline(baseline, color="black", ls="--", lw=1, label=f"no-skill={baseline:.3f}")
-    ax.set(xlabel="Recall", ylabel="Precision", title="Prompt 3 internal precision-recall curves")
+    ax.set(xlabel="Recall", ylabel="Precision", title="Development internal precision-recall curves")
     ax.legend(fontsize=7, ncol=2)
     fig.tight_layout(); fig.savefig(FIGURE / "pr_curves.png", dpi=180); fig.savefig(FIGURE / "pr_curves.pdf"); plt.close(fig)
 
@@ -907,7 +907,7 @@ def save_plots(primary_preds: dict[tuple[str, str], pd.DataFrame], selected_key:
         auc = __import__("sklearn.metrics", fromlist=["roc_auc_score"]).roc_auc_score(pooled["y_true"], pooled["predicted_probability"])
         ax.plot(fpr, tpr, lw=1.2, label=f"{model} / {label} AUROC={auc:.3f}")
     ax.plot([0, 1], [0, 1], "k--", lw=1)
-    ax.set(xlabel="False-positive rate", ylabel="True-positive rate", title="Prompt 3 internal ROC curves")
+    ax.set(xlabel="False-positive rate", ylabel="True-positive rate", title="Development internal ROC curves")
     ax.legend(fontsize=7, ncol=2)
     fig.tight_layout(); fig.savefig(FIGURE / "roc_curves.png", dpi=180); fig.savefig(FIGURE / "roc_curves.pdf"); plt.close(fig)
 
@@ -954,16 +954,16 @@ def write_feature_set_table(clean: pd.DataFrame) -> None:
 def write_metric_tables(summary: pd.DataFrame, selected_model: str, selected_set: str, missingness_table: pd.DataFrame, imbalance_table: pd.DataFrame, calibration_table: pd.DataFrame, alert_table: pd.DataFrame, subgroup_table: pd.DataFrame) -> None:
     summary_b = summary[(summary["feature_set"] == "B") & (summary["strategy"] == "none")].copy()
     summary_c = summary[(summary["feature_set"] == "C") & (summary["strategy"] == "none")].copy()
-    summary_b.to_csv(TABLE / "table_P3-2_model_comparison_feature_set_B.csv", index=False, encoding="utf-8-sig")
-    summary_c.to_csv(TABLE / "table_P3-3_model_comparison_feature_set_C.csv", index=False, encoding="utf-8-sig")
-    missingness_table.to_csv(TABLE / "table_P3-4_missingness_ablation.csv", index=False, encoding="utf-8-sig")
-    imbalance_table.to_csv(TABLE / "table_P3-5_imbalance_strategy_comparison.csv", index=False, encoding="utf-8-sig")
-    calibration_table.to_csv(TABLE / "table_P3-6_calibration_metrics.csv", index=False, encoding="utf-8-sig")
-    alert_table.to_csv(TABLE / "table_P3-7_alert_budget_analysis.csv", index=False, encoding="utf-8-sig")
-    subgroup_table.to_csv(TABLE / "table_P3-8_subgroup_robustness_summary.csv", index=False, encoding="utf-8-sig")
-    write_text(REPORT / "table_P3-1_feature_sets_and_missingness.md", """# Table P3-1 - Feature sets and missingness
+    summary_b.to_csv(TABLE / "table_dev_2_model_comparison_feature_set_B.csv", index=False, encoding="utf-8-sig")
+    summary_c.to_csv(TABLE / "table_dev_3_model_comparison_feature_set_C.csv", index=False, encoding="utf-8-sig")
+    missingness_table.to_csv(TABLE / "table_dev_4_missingness_ablation.csv", index=False, encoding="utf-8-sig")
+    imbalance_table.to_csv(TABLE / "table_dev_5_imbalance_strategy_comparison.csv", index=False, encoding="utf-8-sig")
+    calibration_table.to_csv(TABLE / "table_dev_6_calibration_metrics.csv", index=False, encoding="utf-8-sig")
+    alert_table.to_csv(TABLE / "table_dev_7_alert_budget_analysis.csv", index=False, encoding="utf-8-sig")
+    subgroup_table.to_csv(TABLE / "table_dev_8_subgroup_robustness_summary.csv", index=False, encoding="utf-8-sig")
+    write_text(REPORT / "table_dev_1_feature_sets_and_missingness.md", """# Development Table 1 - Feature sets and missingness
 
-See `tables/prompt3/feature_sets_and_missingness.csv`. Feature Sets A-C are the primary hierarchy; Feature Set D is complaint sensitivity-only. M0-M4 are the pre-specified missingness representations.
+See `tables/development/feature_sets_and_missingness.csv`. Feature Sets A-C are the primary hierarchy; Feature Set D is complaint sensitivity-only. M0-M4 are the pre-specified missingness representations.
 """)
 
 
@@ -984,7 +984,7 @@ def error_analysis(clean: pd.DataFrame, pred: pd.DataFrame) -> tuple[pd.DataFram
     group_dist.to_csv(TABLE / "error_analysis_complaint_groups.csv", index=False, encoding="utf-8-sig")
     text = f"""# Error analysis
 
-The leading candidate was analyzed using an exploratory top-5% operating point with pooled internal predictions. This threshold is not a locked clinical threshold. The four outcome/error classes are summarized in `tables/prompt3/error_analysis_summary.csv`; complaint-group distributions are in `tables/prompt3/error_analysis_complaint_groups.csv`.
+The leading candidate was analyzed using an exploratory top-5% operating point with pooled internal predictions. This threshold is not a locked clinical threshold. The four outcome/error classes are summarized in `tables/development/error_analysis_summary.csv`; complaint-group distributions are in `tables/development/error_analysis_complaint_groups.csv`.
 
 The analysis compares age, sex, triage, major clinical fields, missingness burden, complaint group, period, and Department descriptively. It does not interpret errors causally and contains no locked-period predictions.
 
@@ -1022,7 +1022,7 @@ def complaint_sensitivity_report(clean: pd.DataFrame, c_pred: pd.DataFrame, d_pr
     status = "POSSIBLE SHORTCUT" if delta > 0.02 and concentration > d_frame.y_true.mean() * 2 else "HELPFUL" if delta > 0.005 else "NEUTRAL"
     text = f"""# Complaint sensitivity analysis
 
-Selected family: `{selected_model}`. Feature Set D is sensitivity-only. The comparison is in `tables/prompt3/complaint_sensitivity_results.csv`.
+Selected family: `{selected_model}`. Feature Set D is sensitivity-only. The comparison is in `tables/development/complaint_sensitivity_results.csv`.
 
 Feature Set D changed Average Precision by `{delta:.6f}` relative to C. Infection-related complaint rows had prevalence `{concentration:.6f}` in this internal sample versus `{d_frame.y_true.mean():.6f}` overall. Complaint interpretation: **{status}**. A large gain concentrated in infection-related groups would be a possible shortcut signal, not evidence of causal clinical value.
 
@@ -1047,7 +1047,7 @@ This is coarse period robustness only. `Year` was not a predictor, and the unres
 def write_robustness_report(subgroup_table: pd.DataFrame) -> None:
     text = """# Internal robustness
 
-The leading candidate was evaluated descriptively across sex, age bands, triage, available non-candidate periods, missingness severity, and common Department groups. Department was used only as a descriptive stratification variable. Positive-event safeguards from Prompt 2 were applied: groups with fewer than 20 positives are counts/descriptive only; at least 50 positives is preferred for interpretive comparison.
+The leading candidate was evaluated descriptively across sex, age bands, triage, available non-candidate periods, missingness severity, and common Department groups. Department was used only as a descriptive stratification variable. Positive-event safeguards from data-quality protocol were applied: groups with fewer than 20 positives are counts/descriptive only; at least 50 positives is preferred for interpretive comparison.
 
 Patient-independent, fairness, and external-validity claims are not supported by this release.
 
@@ -1069,9 +1069,9 @@ def write_missingness_report(table: pd.DataFrame, selected_model: str) -> tuple[
 
 Selected family: `{selected_model}`. The pre-specified representations M0-M4 were evaluated with the same development-only folds and no locked-period data. All learned preprocessing was fitted within each training fold.
 
-M1 (values plus indicators) changed mean Average Precision by `{delta:.6f}` relative to M0 (values only), classified for the terminal summary as **{status}**. The result is predictive association only; it does not establish biological causality or transportability. Brier, calibration, alert-budget, and uncertainty columns are in `tables/prompt3/missingness_ablation_results.csv`.
+M1 (values plus indicators) changed mean Average Precision by `{delta:.6f}` relative to M0 (values only), classified for the terminal summary as **{status}**. The result is predictive association only; it does not establish biological causality or transportability. Brier, calibration, alert-budget, and uncertainty columns are in `tables/development/missingness_ablation_results.csv`.
 
-Low-missing M3 uses the frozen Prompt 2 documented `<10%` missingness subset. M4 excludes fields above the frozen `>50%` high-missingness threshold. These thresholds were recorded before modeling.
+Low-missing M3 uses the frozen data-quality protocol documented `<10%` missingness subset. M4 excludes fields above the frozen `>50%` high-missingness threshold. These thresholds were recorded before modeling.
 """)
     return delta, status
 
@@ -1090,7 +1090,7 @@ Selected family: `{selected_model}` on Feature Set C. The primary strategy was n
 
 {status}
 
-Full PR-AUC, Brier, calibration, PPV, sensitivity, and alert-burden summaries are in `tables/prompt3/imbalance_sensitivity_results.csv`. No single strategy is promoted from AP alone.
+Full PR-AUC, Brier, calibration, PPV, sensitivity, and alert-burden summaries are in `tables/development/imbalance_sensitivity_results.csv`. No single strategy is promoted from AP alone.
 """)
     return status
 
@@ -1099,9 +1099,9 @@ def write_calibration_report(table: pd.DataFrame, selected_model: str, selected_
     best = table.sort_values("pooled_brier").iloc[0]
     text = f"""# Calibration analysis
 
-The leading development candidate was `{selected_model}` / Feature Set `{selected_set}`. Sigmoid/Platt calibration was fitted inside the development training structure only; no locked-period observations were used. Raw and calibrated curves are in `figures/prompt3/calibration_selected.png` and `.pdf`.
+The leading development candidate was `{selected_model}` / Feature Set `{selected_set}`. Sigmoid/Platt calibration was fitted inside the development training structure only; no locked-period observations were used. Raw and calibrated curves are in `figures/development/calibration_selected.png` and `.pdf`.
 
-The lowest pooled Brier row was method `{best['method']}` with Brier `{best['pooled_brier']:.6f}` and calibration slope `{best['pooled_calibration_slope']:.6f}`. Calibration-in-the-large, confidence intervals, and fold-level values are in `tables/prompt3/calibration_metrics.csv`.
+The lowest pooled Brier row was method `{best['method']}` with Brier `{best['pooled_brier']:.6f}` and calibration slope `{best['pooled_calibration_slope']:.6f}`. Calibration-in-the-large, confidence intervals, and fold-level values are in `tables/development/calibration_metrics.csv`.
 
 Calibration quality is reported separately from discrimination. No clinical threshold was locked.
 """
@@ -1131,7 +1131,7 @@ def build_master_report(
     q1_signal: str,
     cbm: str,
     aim: str,
-    prompt4: str,
+    robustness: str,
 ) -> None:
     selected_key = f"{selected['model_family']} / Feature Set {selected['feature_set']}"
     best_ap = summary[summary.strategy == "none"].sort_values("mean_average_precision", ascending=False).iloc[0]
@@ -1139,20 +1139,20 @@ def build_master_report(
     top5 = alert_table.loc[alert_table.budget_pct == 5].iloc[0]
     period_delta = float(period_table.pr_auc.max() - period_table.pr_auc.min()) if not period_table.empty else float("nan")
     subgroup_reportable = subgroup_table[subgroup_table.reporting_status == "reportable exploratory"]
-    text = f"""# Prompt 3 Master Model Development Report
+    text = f"""# Model Development Master Report
 
 **Status:** `PASS WITH WARNINGS`  
-**Protocol:** Prompt 2B / `STUDY_PROTOCOL_v2.md`  
+**Protocol:** pre-model protocol / `STUDY_PROTOCOL_v2.md`  
 **Evaluation unit:** encounter-level retrospective  
 **Locked test touched:** `NO`
 
 ## 1. Executive summary
 
-Prompt 3 completed the authorized development analysis without using `1404-2`. The full source reconstruction matched 119,743 rows and 1,567 positives; the modeled development pool contains `{int(clean[clean.Year != LOCKED_YEAR].shape[0]):,}` rows and `{int(clean.loc[clean.Year != LOCKED_YEAR, 'Label'].sum()):,}` positives. The primary candidate selected by the pre-specified multi-criteria policy is `{selected_key}` with development mean AP `{selected['mean_average_precision']:.6f}` and mean Brier `{selected['mean_brier']:.6f}`. This is internal evidence only; outcome definition, field-level timing, patient independence, and external validation remain unresolved.
+The development analysis was completed without using `1404-2`. The full source reconstruction matched 119,743 rows and 1,567 positives; the modeled development pool contains `{int(clean[clean.Year != LOCKED_YEAR].shape[0]):,}` rows and `{int(clean.loc[clean.Year != LOCKED_YEAR, 'Label'].sum()):,}` positives. The primary candidate selected by the pre-specified multi-criteria policy is `{selected_key}` with development mean AP `{selected['mean_average_precision']:.6f}` and mean Brier `{selected['mean_brier']:.6f}`. This is internal evidence only; outcome definition, field-level timing, patient independence, and external validation remain unresolved.
 
 ## 2. Data/cohort verification
 
-The raw hash, exact full counts, parsing failures, QC flags, no missing-predictor row exclusions, and candidate-period exclusion are documented in `reports/prompt3/01_analytic_dataset_reconstruction.md`. The source raw CSV was not altered. Derived lineage data are under `data/derived/prompt3_analytic_dataset.parquet`.
+The raw hash, exact full counts, parsing failures, QC flags, no missing-predictor row exclusions, and candidate-period exclusion are documented in `reports/development/01_analytic_dataset_reconstruction.md`. The source raw CSV was not altered. Derived lineage data are under `data/derived/development_analytic_dataset.parquet`.
 
 ## 3. Validation actually executed
 
@@ -1160,7 +1160,7 @@ Development-only stratified three-fold resampling was repeated for seeds 42 and 
 
 ## 4. Feature Sets A-D
 
-Feature Set A is Age/Sex/Triage. B adds first-day vitals/labs. C adds fold-safe missingness indicators. D adds the frozen label-blind complaint grouping and remains sensitivity-only. Feature-set definitions are in `tables/prompt3/feature_sets_and_missingness.csv`.
+Feature Set A is Age/Sex/Triage. B adds first-day vitals/labs. C adds fold-safe missingness indicators. D adds the frozen label-blind complaint grouping and remains sensitivity-only. Feature-set definitions are in `tables/development/feature_sets_and_missingness.csv`.
 
 ## 5. Preprocessing
 
@@ -1172,15 +1172,15 @@ Required families tested: {", ".join(MODEL_FAMILIES)}. No deep neural model or E
 
 ## 7. Hyperparameter tuning
 
-Bounded two-fold Feature Set B searches used at most three sampled configurations per family and optimized AP. Search spaces and executed configurations are in `tables/prompt3/hyperparameter_search_spaces.csv` and `tables/prompt3/tuning_results.csv`.
+Bounded two-fold Feature Set B searches used at most three sampled configurations per family and optimized AP. Search spaces and executed configurations are in `tables/development/hyperparameter_search_spaces.csv` and `tables/development/tuning_results.csv`.
 
 ## 8. Feature-set comparison
 
-All required families were compared on A, B, and C with identical repeated folds. B and C tables are in `tables/prompt3/table_P3-2_model_comparison_feature_set_B.csv` and `tables/prompt3/table_P3-3_model_comparison_feature_set_C.csv`.
+All required families were compared on A, B, and C with identical repeated folds. B and C tables are in `tables/development/table_dev_2_model_comparison_feature_set_B.csv` and `tables/development/table_dev_3_model_comparison_feature_set_C.csv`.
 
 ## 9. Missingness ablation
 
-M0-M4 were run for the selected family. M1 classification: **{missingness_status}**. Full results: `tables/prompt3/missingness_ablation_results.csv`.
+M0-M4 were run for the selected family. M1 classification: **{missingness_status}**. Full results: `tables/development/missingness_ablation_results.csv`.
 
 ## 10. Imbalance sensitivity
 
@@ -1188,7 +1188,7 @@ No resampling was primary. Fold-local class weighting, random 3:1 negative under
 
 ## 11. Calibration
 
-Raw and sigmoid-calibrated development predictions were compared with fold-safe calibration. Selected calibration method for the saved candidate: `{selected_calibration}`. Results: `tables/prompt3/calibration_metrics.csv`.
+Raw and sigmoid-calibrated development predictions were compared with fold-safe calibration. Selected calibration method for the saved candidate: `{selected_calibration}`. Results: `tables/development/calibration_metrics.csv`.
 
 ## 12. PR-AUC results
 
@@ -1204,7 +1204,7 @@ Primary tables report fold-level means and 95% t-based intervals across the six 
 
 ## 15. Internal robustness
 
-Subgroup results are in `tables/prompt3/subgroup_performance.csv`. `{len(subgroup_reportable)}` subgroup rows met the minimum 20-positive exploratory reporting threshold; groups below that threshold remain descriptive only.
+Subgroup results are in `tables/development/subgroup_performance.csv`. `{len(subgroup_reportable)}` subgroup rows met the minimum 20-positive exploratory reporting threshold; groups below that threshold remain descriptive only.
 
 ## 16. Period robustness
 
@@ -1212,19 +1212,19 @@ Only non-candidate Year categories were summarized. PR-AUC range across availabl
 
 ## 17. Error analysis
 
-False-negative, false-positive, true-positive, and true-negative summaries are in `tables/prompt3/error_analysis_summary.csv`. Errors are descriptive and not causal findings.
+False-negative, false-positive, true-positive, and true-negative summaries are in `tables/development/error_analysis_summary.csv`. Errors are descriptive and not causal findings.
 
 ## 18. Explainability
 
-The saved leading tree/linear model has fold-fitted source-field importance summaries in `tables/prompt3/feature_importance_stability.csv` and `figures/prompt3/explainability_summary.png`. A bounded TreeSHAP diagnostic on 2,000 non-candidate development rows is in `tables/prompt3/shap_global_importance.csv` and the paired SHAP figures. The current XGBoost output uses native `pred_contribs` TreeSHAP because the installed SHAP loader cannot parse XGBoost 3.x vector base-score metadata. Explanations are associative, not causal.
+The saved leading tree/linear model has fold-fitted source-field importance summaries in `tables/development/feature_importance_stability.csv` and `figures/development/explainability_summary.png`. A bounded TreeSHAP diagnostic on 2,000 non-candidate development rows is in `tables/development/shap_global_importance.csv` and the paired SHAP figures. The current XGBoost output uses native `pred_contribs` TreeSHAP because the installed SHAP loader cannot parse XGBoost 3.x vector base-score metadata. Explanations are associative, not causal.
 
 ## 19. Feature-importance stability
 
-Importance is recorded across the six primary folds and aggregated back to source fields. Stability interpretation is in `reports/prompt3/13_feature_stability.md`; unstable rankings are not promoted as scientific mechanisms.
+Importance is recorded across the six primary folds and aggregated back to source fields. Stability interpretation is in `reports/development/13_feature_stability.md`; unstable rankings are not promoted as scientific mechanisms.
 
 ## 20. Complaint sensitivity
 
-Feature Set D changed AP by `{complaint_table.loc[complaint_table.representation == 'D', 'delta_vs_C'].iloc[0]:.6f}` relative to C. Terminal classification: **{complaint_status}**. Full comparison: `tables/prompt3/complaint_sensitivity_results.csv`.
+Feature Set D changed AP by `{complaint_table.loc[complaint_table.representation == 'D', 'delta_vs_C'].iloc[0]:.6f}` relative to C. Terminal classification: **{complaint_status}**. Full comparison: `tables/development/complaint_sensitivity_results.csv`.
 
 ## 21. Primary candidate model selection
 
@@ -1238,22 +1238,22 @@ Secondary development candidate: `{secondary['model_family']} / Feature Set {sec
 
 The HAI outcome definition and exact onset criteria are unverified; exact field-level timing is unavailable; patient-independent validation is unsupported; Year ordering/`1404-2` remain unresolved; and this is a single-release retrospective analysis without external or prospective validation.
 
-## 24. Q1-readiness after Prompt 3
+## 24. Q1-readiness after development analysis
 
 Q1 signal: **{q1_signal}**. CBM readiness: **{cbm}**. AI in Medicine readiness: **{aim}**. The results provide evidence beyond a bare algorithm leaderboard only if the incremental feature, missingness, calibration, alert, and stability findings remain reproducible in later robustness work.
 
-## 25. Exact Prompt 4 requirements
+## 25. Exact robustness analysis requirements
 
-Prompt 4 recommendation: **{prompt4}**. If continued, Prompt 4 must focus on robustness, clinical reliability, final model freezing, locked-period governance after temporal clarification, uncertainty, and transparent handling of all unresolved outcome/timing/patient-independence limitations. It must not erase this development evidence or retroactively tune on `1404-2`.
+Robustness-analysis recommendation: **{robustness}**. If continued, the robustness analysis must focus on robustness, clinical reliability, final model freezing, locked-period governance after temporal clarification, uncertainty, and transparent handling of all unresolved outcome/timing/patient-independence limitations. It must not erase this development evidence or retroactively tune on `1404-2`.
 
 ## Machine-readable outputs
 
-- `artifacts/prompt3/fold_results.parquet`
-- `artifacts/prompt3/predictions_internal.parquet`
-- `artifacts/prompt3/model_summary.csv`
-- `reports/prompt3_summary.json`
+- `artifacts/development/fold_results.parquet`
+- `artifacts/development/predictions_internal.parquet`
+- `artifacts/development/model_summary.csv`
+- `reports/development_summary.json`
 """
-    write_text(ROOT / "reports" / "PROMPT3_MASTER_MODEL_DEVELOPMENT.md", text)
+    write_text(ROOT / "reports" / "MODEL_DEVELOPMENT_MASTER.md", text)
 
 
 def write_summary_json(
@@ -1272,7 +1272,7 @@ def write_summary_json(
     q1_signal: str,
     cbm: str,
     aim: str,
-    prompt4: str,
+    robustness: str,
     deviation_count: int,
 ) -> None:
     dev = clean[clean["Year"] != LOCKED_YEAR]
@@ -1319,10 +1319,10 @@ def write_summary_json(
         "cbm_readiness": cbm,
         "ai_in_medicine_readiness": aim,
         "q1_signal": q1_signal,
-        "prompt4_recommendation": prompt4,
+        "robustness_recommendation": robustness,
         "selected_candidate_pooled_metrics": {k: selected[k] for k in selected.index if k.startswith("pooled_")},
     }
-    write_json(ROOT / "reports" / "prompt3_summary.json", summary)
+    write_json(ROOT / "reports" / "development_summary.json", summary)
 
 
 def finalize_existing() -> None:
@@ -1392,17 +1392,17 @@ def finalize_existing() -> None:
     top5 = alert_table.loc[alert_table.budget_pct == 5].iloc[0]
     period_range = float(period_table.pr_auc.max() - period_table.pr_auc.min()) if not period_table.empty else 0.0
     if b_vs_a > 0.005 and c_vs_b > 0.002 and float(top5.mean_ppv) > float(dev.Label.mean()) * 2 and period_range < 0.05:
-        q1_signal, cbm, aim, prompt4 = "STRONG Q1 SIGNAL", "STRONG", "CONDITIONAL", "RECOMMENDED"
+        q1_signal, cbm, aim, robustness = "STRONG Q1 SIGNAL", "STRONG", "CONDITIONAL", "RECOMMENDED"
     elif float(selected["pooled_average_precision"]) > float(dev.Label.mean()) and (b_vs_a > 0 or c_vs_b > 0):
-        q1_signal, cbm, aim, prompt4 = "PROMISING BUT INCOMPLETE", "MODERATE", "CONDITIONAL", "RECOMMENDED"
+        q1_signal, cbm, aim, robustness = "PROMISING BUT INCOMPLETE", "MODERATE", "CONDITIONAL", "RECOMMENDED"
     else:
-        q1_signal, cbm, aim, prompt4 = "WEAK", "WEAK", "WEAK", "NOT RECOMMENDED"
+        q1_signal, cbm, aim, robustness = "WEAK", "WEAK", "WEAK", "NOT RECOMMENDED"
     governance_path = ROOT / "docs" / "STUDY_GOVERNANCE.md"
     governance_text = governance_path.read_text(encoding="utf-8") if governance_path.exists() else ""
     deviation_count = sum(1 for line in governance_text.splitlines() if line.startswith("## "))
-    write_summary_json(clean, selected, summary[summary.strategy == "none"].sort_values("mean_average_precision", ascending=False).iloc[0], summary[summary.strategy == "none"].sort_values("mean_brier").iloc[0], selected_calibration, missing_delta, missing_status, imbalance_table, complaint_status, subgroup_table, period_table, alert_table, q1_signal, cbm, aim, prompt4, deviation_count)
-    build_master_report(stats, clean, summary, tuning, selected, secondary, calibration_table, missingness_table, imbalance_table, alert_table, subgroup_table, period_table, complaint_table, error_table, selected_calibration, missing_status, imbalance_status, complaint_status, q1_signal, cbm, aim, prompt4)
-    first_log = (LOG_DIR / "prompt3_run.log").read_text(encoding="utf-8").splitlines()[0] if (LOG_DIR / "prompt3_run.log").exists() else ""
+    write_summary_json(clean, selected, summary[summary.strategy == "none"].sort_values("mean_average_precision", ascending=False).iloc[0], summary[summary.strategy == "none"].sort_values("mean_brier").iloc[0], selected_calibration, missing_delta, missing_status, imbalance_table, complaint_status, subgroup_table, period_table, alert_table, q1_signal, cbm, aim, robustness, deviation_count)
+    build_master_report(stats, clean, summary, tuning, selected, secondary, calibration_table, missingness_table, imbalance_table, alert_table, subgroup_table, period_table, complaint_table, error_table, selected_calibration, missing_status, imbalance_status, complaint_status, q1_signal, cbm, aim, robustness)
+    first_log = (LOG_DIR / "development_run.log").read_text(encoding="utf-8").splitlines()[0] if (LOG_DIR / "development_run.log").exists() else ""
     if first_log:
         # The logger uses the host-local clock; its historical suffix was not
         # a UTC conversion.  Normalize that recorded start to real UTC.
@@ -1411,8 +1411,8 @@ def finalize_existing() -> None:
     else:
         execution_timestamp = datetime.now(timezone.utc).isoformat()
     manifest = {
-        "prompt": "Prompt 3",
-        "protocol_version": "STUDY_PROTOCOL_v2 / prompt2b-v2",
+        "analysis_stage": "development",
+        "protocol_version": "STUDY_PROTOCOL_v2 / pre-model-protocol-v2",
         "execution_timestamp_utc": execution_timestamp,
         "completion_timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "raw_data": {"path": str(RAW.relative_to(ROOT)), "sha256": raw_hash, "full_n": stats["full_n"], "full_positive_n": stats["full_positive_n"], "locked_candidate_period": LOCKED_YEAR, "locked_candidate_touched": False},
@@ -1424,13 +1424,13 @@ def finalize_existing() -> None:
         "feature_sets": {k: v for k, v in FEATURE_SETS.items()},
         "validation_definitions": {"evaluation_unit": "encounter-level retrospective", "development_years": ["1402", "1403", "1404"], "excluded_locked_candidate": LOCKED_YEAR, "split": "stratified 3-fold repeated over seeds 42 and 2024", "temporal_validation": "PARTIAL / COARSE PERIOD VALIDATION ONLY", "patient_independence": "UNSUPPORTED"},
         "tuning": {"scope": "Feature Set B", "folds": 2, "max_configurations_per_model": 3, "metric": "Average Precision"},
-        "artifacts": {"predictions": "artifacts/prompt3/predictions_internal.parquet", "fold_results": "artifacts/prompt3/fold_results.parquet", "primary_pipeline": "models/prompt3/selected_primary_pipeline.joblib"},
+        "artifacts": {"predictions": "artifacts/development/predictions_internal.parquet", "fold_results": "artifacts/development/fold_results.parquet", "primary_pipeline": "models/development/selected_primary_pipeline.joblib"},
         "finalization": "assembled from completed internal artifacts after terminal report-assembly retry; no refit during finalization",
         "fit_log_timezone": "Asia/Tehran",
     }
-    write_json(REPORT / "PROMPT3_RUN_MANIFEST.json", manifest)
-    write_text(LOG_DIR / "prompt3_completion.txt", f"Prompt 3 completed at {datetime.now(timezone.utc).isoformat()} with locked candidate touched=false.\n")
-    logger.info("Prompt 3 finalization complete; selected=%s/%s q1=%s", selected_model, selected_set, q1_signal)
+    write_json(REPORT / "DEVELOPMENT_RUN_MANIFEST.json", manifest)
+    write_text(LOG_DIR / "development_completion.txt", f"Development analysis completed at {datetime.now(timezone.utc).isoformat()} with locked candidate touched=false.\n")
+    logger.info("Development analysis finalization complete; selected=%s/%s q1=%s", selected_model, selected_set, q1_signal)
 
 
 def main() -> None:
@@ -1438,7 +1438,7 @@ def main() -> None:
     ensure_dirs()
     logger = configure_logging()
     start = datetime.now(timezone.utc)
-    logger.info("Prompt 3 start; root=%s", ROOT)
+    logger.info("Development analysis start; root=%s", ROOT)
     raw_hash = raw_sha256(RAW)
     raw = pd.read_csv(RAW, dtype="string", keep_default_na=False, na_filter=False, low_memory=False)
     clean, qc, _, stats, _ = reconstruct_dataset(raw)
@@ -1602,20 +1602,20 @@ def main() -> None:
     period_range = float(period_table.pr_auc.max() - period_table.pr_auc.min()) if not period_table.empty else 0.0
     top5 = alert_table.loc[alert_table.budget_pct == 5].iloc[0]
     if b_vs_a > 0.005 and c_vs_b > 0.002 and float(top5.mean_ppv) > float(dev_clean.Label.mean()) * 2 and period_range < 0.05:
-        q1_signal, cbm, aim, prompt4 = "STRONG Q1 SIGNAL", "STRONG", "CONDITIONAL", "RECOMMENDED"
+        q1_signal, cbm, aim, robustness = "STRONG Q1 SIGNAL", "STRONG", "CONDITIONAL", "RECOMMENDED"
     elif float(selected["pooled_average_precision"]) > float(dev_clean.Label.mean()) and (b_vs_a > 0 or c_vs_b > 0):
-        q1_signal, cbm, aim, prompt4 = "PROMISING BUT INCOMPLETE", "MODERATE", "CONDITIONAL", "RECOMMENDED"
+        q1_signal, cbm, aim, robustness = "PROMISING BUT INCOMPLETE", "MODERATE", "CONDITIONAL", "RECOMMENDED"
     else:
-        q1_signal, cbm, aim, prompt4 = "WEAK", "WEAK", "WEAK", "NOT RECOMMENDED"
+        q1_signal, cbm, aim, robustness = "WEAK", "WEAK", "WEAK", "NOT RECOMMENDED"
     governance_path = ROOT / "docs" / "STUDY_GOVERNANCE.md"
     governance_text = governance_path.read_text(encoding="utf-8") if governance_path.exists() else ""
     deviation_count = sum(1 for line in governance_text.splitlines() if line.startswith("## "))
-    write_summary_json(clean, selected, summary[summary.strategy == "none"].sort_values("mean_average_precision", ascending=False).iloc[0], summary[summary.strategy == "none"].sort_values("mean_brier").iloc[0], selected_calibration, missingness_delta, missingness_status, imbalance_table, complaint_status, subgroup_table, period_table, alert_table, q1_signal, cbm, aim, prompt4, deviation_count)
-    build_master_report(stats, clean, summary, tuning_all, selected, secondary, calibration_table, missingness_table, imbalance_table, alert_table, subgroup_table, period_table, complaint_table, error_table, selected_calibration, missingness_status, imbalance_status, complaint_status, q1_signal, cbm, aim, prompt4)
+    write_summary_json(clean, selected, summary[summary.strategy == "none"].sort_values("mean_average_precision", ascending=False).iloc[0], summary[summary.strategy == "none"].sort_values("mean_brier").iloc[0], selected_calibration, missingness_delta, missingness_status, imbalance_table, complaint_status, subgroup_table, period_table, alert_table, q1_signal, cbm, aim, robustness, deviation_count)
+    build_master_report(stats, clean, summary, tuning_all, selected, secondary, calibration_table, missingness_table, imbalance_table, alert_table, subgroup_table, period_table, complaint_table, error_table, selected_calibration, missingness_status, imbalance_status, complaint_status, q1_signal, cbm, aim, robustness)
 
     manifest = {
-        "prompt": "Prompt 3",
-        "protocol_version": "STUDY_PROTOCOL_v2 / prompt2b-v2",
+        "analysis_stage": "development",
+        "protocol_version": "STUDY_PROTOCOL_v2 / pre-model-protocol-v2",
         "execution_timestamp_utc": start.isoformat(),
         "completion_timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "raw_data": {"path": str(RAW.relative_to(ROOT)), "sha256": raw_hash, "full_n": stats["full_n"], "full_positive_n": stats["full_positive_n"], "locked_candidate_period": LOCKED_YEAR, "locked_candidate_touched": False},
@@ -1627,11 +1627,11 @@ def main() -> None:
         "feature_sets": {k: v for k, v in FEATURE_SETS.items()},
         "validation_definitions": {"evaluation_unit": "encounter-level retrospective", "development_years": ["1402", "1403", "1404"], "excluded_locked_candidate": LOCKED_YEAR, "split": "stratified 3-fold repeated over seeds 42 and 2024", "temporal_validation": "PARTIAL / COARSE PERIOD VALIDATION ONLY", "patient_independence": "UNSUPPORTED"},
         "tuning": {"scope": "Feature Set B", "folds": 2, "max_configurations_per_model": 3, "metric": "Average Precision"},
-        "artifacts": {"predictions": "artifacts/prompt3/predictions_internal.parquet", "fold_results": "artifacts/prompt3/fold_results.parquet", "primary_pipeline": "models/prompt3/selected_primary_pipeline.joblib"},
+        "artifacts": {"predictions": "artifacts/development/predictions_internal.parquet", "fold_results": "artifacts/development/fold_results.parquet", "primary_pipeline": "models/development/selected_primary_pipeline.joblib"},
     }
-    write_json(REPORT / "PROMPT3_RUN_MANIFEST.json", manifest)
-    write_text(LOG_DIR / "prompt3_completion.txt", f"Prompt 3 completed at {datetime.now(timezone.utc).isoformat()} with locked candidate touched=false.\n")
-    logger.info("Prompt 3 complete; selected=%s/%s q1=%s", selected_model, selected_set, q1_signal)
+    write_json(REPORT / "DEVELOPMENT_RUN_MANIFEST.json", manifest)
+    write_text(LOG_DIR / "development_completion.txt", f"Development analysis completed at {datetime.now(timezone.utc).isoformat()} with locked candidate touched=false.\n")
+    logger.info("Development analysis complete; selected=%s/%s q1=%s", selected_model, selected_set, q1_signal)
 
 
 if __name__ == "__main__":

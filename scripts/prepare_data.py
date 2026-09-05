@@ -10,7 +10,7 @@ import pandas as pd
 
 from _common import require_data
 
-import run_prompt3 as analysis
+import development_analysis as analysis
 
 
 def main() -> None:

@@ -1,4 +1,4 @@
-version: "prompt2b-v2"
+version: "pre-model-protocol-v2"
 prediction_window_source_declared: "Admission and the first 24 hours after hospital admission"
 prediction_timepoint_status: "PARTIALLY VERIFIED"
 author_contact_required: false
