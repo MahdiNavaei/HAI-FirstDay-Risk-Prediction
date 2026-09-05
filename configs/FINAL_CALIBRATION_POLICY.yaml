@@ -1,7 +1,7 @@
 version: final-calibration-policy-v1
 status: FROZEN
 method: NO RECALIBRATION
-reason: development analysis nested sigmoid calibration did not materially improve Brier; robustness analysis evaluates raw frozen probabilities
+reason: nested sigmoid calibration evaluated during development did not materially improve Brier; the frozen model therefore uses raw probabilities without recalibration
 development_pooled_reference:
   brier: 0.0122742131259927
   slope: 1.028528065340141
