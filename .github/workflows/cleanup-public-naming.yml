@@ -59,6 +59,11 @@ jobs:
               ('prompt3_runtime', 'modeling_runtime'),
               ('run_prompt3', 'development_analysis'),
               ('run_prompt4', 'robustness_analysis'),
+              ('PROMPT3_MASTER_MODEL_DEVELOPMENT', 'MODEL_DEVELOPMENT_MASTER'),
+              ('PROMPT3_RUN_MANIFEST', 'DEVELOPMENT_RUN_MANIFEST'),
+              ('PROMPT4_MASTER_ROBUSTNESS_AND_FREEZE', 'ROBUSTNESS_AND_FREEZE_MASTER'),
+              ('PROMPT4_RUN_MANIFEST', 'ROBUSTNESS_RUN_MANIFEST'),
+              ('FROZEN — DO NOT EXECUTE IN PROMPT 4', 'FROZEN — DO NOT EXECUTE DURING ROBUSTNESS ANALYSIS'),
               ("Prompt 3's nested sigmoid", 'the development-analysis nested sigmoid'),
               ('Prompt 2B', 'pre-model protocol'),
               ('Prompt 2', 'data-quality protocol'),
@@ -83,6 +88,14 @@ jobs:
               original = text
               for old, new in exact:
                   text = text.replace(old, new)
+              text = re.sub(r'\bPROMPT2B\b', 'PRE_MODEL_PROTOCOL', text)
+              text = re.sub(r'\bPROMPT2\b', 'DATA_QUALITY_PROTOCOL', text)
+              text = re.sub(r'\bPROMPT3\b', 'DEVELOPMENT', text)
+              text = re.sub(r'\bPROMPT4\b', 'ROBUSTNESS', text)
+              text = re.sub(r'\bPROMPT\s+2B\b', 'PRE-MODEL PROTOCOL', text)
+              text = re.sub(r'\bPROMPT\s+2\b', 'DATA-QUALITY PROTOCOL', text)
+              text = re.sub(r'\bPROMPT\s+3\b', 'DEVELOPMENT ANALYSIS', text)
+              text = re.sub(r'\bPROMPT\s+4\b', 'ROBUSTNESS ANALYSIS', text)
               text = re.sub(r'\bPrompt\b', 'Stage', text)
               text = re.sub(r'\bprompt\b', 'stage', text)
               text = text.replace('"stage": "development analysis"', '"analysis_stage": "development"')
