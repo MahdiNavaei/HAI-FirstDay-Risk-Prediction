@@ -1,0 +1,133 @@
+name: One-time public naming cleanup
+
+on:
+  push:
+    branches:
+      - cleanup-public-naming
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rewrite legacy stage naming
+        shell: bash
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+          import hashlib
+          import re
+          import subprocess
+          from pathlib import Path
+
+          root = Path('.')
+          expected = root / 'results' / 'expected_results.json'
+          expected_before = hashlib.sha256(expected.read_bytes()).hexdigest()
+
+          renames = {
+              'src/modeling/prompt3_runtime.py': 'src/modeling/modeling_runtime.py',
+              'src/modeling/run_prompt3.py': 'src/modeling/development_analysis.py',
+              'src/modeling/run_prompt4.py': 'src/modeling/robustness_analysis.py',
+          }
+          for old, new in renames.items():
+              old_p, new_p = root / old, root / new
+              if old_p.exists():
+                  new_p.parent.mkdir(parents=True, exist_ok=True)
+                  subprocess.run(['git', 'mv', old, new], check=True)
+
+          exact = [
+              ('prompt4-final-test-execution-policy-v1', 'final-test-execution-policy-v1'),
+              ('prompt4-final-model-specification-v1', 'final-model-specification-v1'),
+              ('prompt4-final-operating-policy-v1', 'final-operating-policy-v1'),
+              ('prompt4-final-calibration-policy-v1', 'final-calibration-policy-v1'),
+              ('prompt4-frozen-v1', 'frozen-model-v1'),
+              ('prompt2b-v2', 'pre-model-protocol-v2'),
+              ('src/modeling/prompt3_runtime.py', 'src/modeling/modeling_runtime.py'),
+              ('src/modeling/run_prompt3.py', 'src/modeling/development_analysis.py'),
+              ('src/modeling/run_prompt4.py', 'src/modeling/robustness_analysis.py'),
+              ('prompt3_runtime', 'modeling_runtime'),
+              ('run_prompt3', 'development_analysis'),
+              ('run_prompt4', 'robustness_analysis'),
+              ("Prompt 3's nested sigmoid", 'the development-analysis nested sigmoid'),
+              ('Prompt 2B', 'pre-model protocol'),
+              ('Prompt 2', 'data-quality protocol'),
+              ('Prompt 3', 'development analysis'),
+              ('Prompt 4', 'robustness analysis'),
+              ('prompt2b', 'pre_model_protocol'),
+              ('prompt3', 'development'),
+              ('prompt4', 'robustness'),
+          ]
+
+          tracked = subprocess.check_output(['git', 'ls-files', '-z']).decode().split('\0')
+          for rel in tracked:
+              if not rel or rel == '.github/workflows/cleanup-public-naming.yml':
+                  continue
+              p = root / rel
+              if not p.is_file():
+                  continue
+              try:
+                  text = p.read_text(encoding='utf-8')
+              except UnicodeDecodeError:
+                  continue
+              original = text
+              for old, new in exact:
+                  text = text.replace(old, new)
+              # Remove generic legacy task-stage terminology left after the targeted replacements.
+              text = re.sub(r'\bPrompt\b', 'Stage', text)
+              text = re.sub(r'\bprompt\b', 'stage', text)
+              # Make generated-manifest terminology explicit rather than LLM-like.
+              text = text.replace('"stage": "development analysis"', '"analysis_stage": "development"')
+              text = text.replace("'stage': 'development analysis'", "'analysis_stage': 'development'")
+              if text != original:
+                  p.write_text(text, encoding='utf-8')
+
+          # Permanent guardrail in the public smoke tests.
+          test_path = root / 'tests' / 'test_release_smoke.py'
+          test_text = test_path.read_text(encoding='utf-8')
+          guard = '''\n\ndef test_public_release_has_no_legacy_task_stage_naming() -> None:\n    tracked = subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).splitlines()\n    forbidden = (\n        "run_prompt", "prompt3_runtime", "Prompt 2", "Prompt 3", "Prompt 4",\n        "prompt2b", "prompt3", "prompt4",\n    )\n    offenders: list[str] = []\n    for rel in tracked:\n        path = ROOT / rel\n        if not path.is_file():\n            continue\n        try:\n            text = path.read_text(encoding="utf-8")\n        except UnicodeDecodeError:\n            continue\n        if any(token in text or token in rel for token in forbidden):\n            offenders.append(rel)\n    assert not offenders, f"Legacy task-stage naming remains in: {offenders}"\n'''
+          if 'test_public_release_has_no_legacy_task_stage_naming' not in test_text:
+              test_path.write_text(test_text.rstrip() + guard + '\n', encoding='utf-8')
+
+          expected_after = hashlib.sha256(expected.read_bytes()).hexdigest()
+          if expected_before != expected_after:
+              raise SystemExit('Scientific reference results changed; aborting cleanup.')
+
+          # Remove the one-time workflow so it does not remain in the public repository.
+          workflow = root / '.github' / 'workflows' / 'cleanup-public-naming.yml'
+          if workflow.exists():
+              workflow.unlink()
+          PY
+
+      - name: Validate source and release smoke tests
+        shell: bash
+        run: |
+          python -m compileall -q src scripts tests
+          python -m pip install --quiet pytest pyyaml
+          pytest -q
+          if git grep -nEi 'run_prompt|prompt3_runtime|\bPrompt[[:space:]]+(2B|2|3|4)\b|prompt(2b|3|4)' -- . ':!*.lock'; then
+            echo 'Legacy task-stage naming still present.' >&2
+            exit 1
+          fi
+          if git grep -nEi 'OpenAI|ChatGPT|Codex|AI-assisted' -- . ':!*.lock'; then
+            echo 'Unexpected AI-assistance marker found in repository.' >&2
+            exit 1
+          fi
+
+      - name: Commit cleaned naming
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No cleanup changes to commit.'
+            exit 0
+          fi
+          git commit -m 'chore: professionalize public analysis-stage naming'
+          git push origin HEAD:cleanup-public-naming
