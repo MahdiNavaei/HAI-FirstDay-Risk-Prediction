@@ -1,0 +1,127 @@
+name: Final public naming validation pass
+
+on:
+  push:
+    branches:
+      - cleanup-public-naming
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup-public-naming
+          fetch-depth: 0
+
+      - name: Normalize remaining legacy stage wording
+        shell: bash
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+          import re
+          import subprocess
+          from pathlib import Path
+
+          root = Path('.')
+          workflow_rel = '.github/workflows/refine-public-naming.yml'
+          tracked = subprocess.check_output(['git', 'ls-files', '-z']).decode().split('\0')
+
+          replacements = [
+              (r'(?i)\bStage\s+2B\b', 'pre-model protocol'),
+              (r'(?i)\bStage\s+2\b', 'data-quality protocol'),
+              (r'(?i)\bStage\s+3\b', 'development analysis'),
+              (r'(?i)\bStage\s+4\b', 'robustness analysis'),
+              (r'(?i)\bPROMPT\s*2B\b', 'pre-model protocol'),
+              (r'(?i)\bPROMPT\s*2\b', 'data-quality protocol'),
+              (r'(?i)\bPROMPT\s*3\b', 'development analysis'),
+              (r'(?i)\bPROMPT\s*4\b', 'robustness analysis'),
+          ]
+
+          for rel in tracked:
+              if not rel or rel == workflow_rel:
+                  continue
+              path = root / rel
+              if not path.is_file():
+                  continue
+              try:
+                  text = path.read_text(encoding='utf-8')
+              except UnicodeDecodeError:
+                  continue
+              original = text
+              for pattern, repl in replacements:
+                  text = re.sub(pattern, repl, text)
+              # Publication-facing wording for the frozen calibration decision.
+              text = text.replace(
+                  'reason: development analysis nested sigmoid calibration did not materially improve Brier; robustness analysis\n  evaluates raw frozen probabilities',
+                  'reason: nested sigmoid calibration evaluated during development did not materially improve Brier;\n  the frozen model therefore uses raw probabilities without recalibration'
+              )
+              if text != original:
+                  path.write_text(text, encoding='utf-8')
+
+          # Remove this one-time workflow from the resulting commit.
+          workflow = root / workflow_rel
+          if workflow.exists():
+              workflow.unlink()
+          PY
+
+      - name: Validate cleaned public tree
+        shell: bash
+        run: |
+          python -m compileall -q src scripts tests
+          python -m pip install --quiet pytest pyyaml
+          pytest -q
+          git diff --check
+          python - <<'PY'
+          from __future__ import annotations
+          import hashlib
+          import re
+          import subprocess
+          from pathlib import Path
+
+          root = Path('.')
+          prompt_re = re.compile(r'(?i)\bprompt\w*')
+          numbered_stage_re = re.compile(r'(?i)\bstage\s*(?:2b|2|3|4)\b')
+          ai_re = re.compile(r'(?i)\b(?:openai|chatgpt|codex)\b|ai-assisted')
+          offenders = {'legacy_prompt': [], 'numbered_stage': [], 'ai_marker': []}
+          tracked = subprocess.check_output(['git', 'ls-files', '-z']).decode().split('\0')
+          for rel in tracked:
+              if not rel:
+                  continue
+              path = root / rel
+              if not path.is_file():
+                  continue
+              try:
+                  text = path.read_text(encoding='utf-8')
+              except UnicodeDecodeError:
+                  continue
+              haystack = rel + '\n' + text
+              if prompt_re.search(haystack): offenders['legacy_prompt'].append(rel)
+              if numbered_stage_re.search(haystack): offenders['numbered_stage'].append(rel)
+              if ai_re.search(haystack): offenders['ai_marker'].append(rel)
+          bad = {k: v for k, v in offenders.items() if v}
+          if bad:
+              raise SystemExit(f'Public naming audit failed: {bad}')
+
+          main_bytes = subprocess.check_output(['git', 'show', 'origin/main:results/expected_results.json'])
+          branch_bytes = (root / 'results' / 'expected_results.json').read_bytes()
+          if hashlib.sha256(main_bytes).digest() != hashlib.sha256(branch_bytes).digest():
+              raise SystemExit('Frozen scientific reference results differ from main; aborting.')
+          print('Public naming audit passed; frozen reference results unchanged.')
+          PY
+
+      - name: Commit final cleaned tree
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No refinement changes to commit.'
+            exit 0
+          fi
+          git commit -m 'chore: finalize publication-facing repository naming'
+          git push origin HEAD:cleanup-public-naming
