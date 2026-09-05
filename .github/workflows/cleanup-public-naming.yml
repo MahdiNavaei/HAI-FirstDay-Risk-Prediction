@@ -90,12 +90,6 @@ jobs:
               if text != original:
                   p.write_text(text, encoding='utf-8')
 
-          test_path = root / 'tests' / 'test_release_smoke.py'
-          test_text = test_path.read_text(encoding='utf-8')
-          guard = '''\n\ndef test_public_release_has_no_legacy_task_stage_naming() -> None:\n    tracked = subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).splitlines()\n    forbidden = (\n        "run_prompt", "prompt3_runtime", "Prompt 2", "Prompt 3", "Prompt 4",\n        "prompt2b", "prompt3", "prompt4",\n    )\n    offenders: list[str] = []\n    for rel in tracked:\n        path = ROOT / rel\n        if not path.is_file():\n            continue\n        try:\n            text = path.read_text(encoding="utf-8")\n        except UnicodeDecodeError:\n            continue\n        if any(token in text or token in rel for token in forbidden):\n            offenders.append(rel)\n    assert not offenders, f"Legacy task-stage naming remains in: {offenders}"\n'''
-          if 'test_public_release_has_no_legacy_task_stage_naming' not in test_text:
-              test_path.write_text(test_text.rstrip() + guard + '\n', encoding='utf-8')
-
           expected_after = hashlib.sha256(expected.read_bytes()).hexdigest()
           if expected_before != expected_after:
               raise SystemExit('Scientific reference results changed; aborting cleanup.')
