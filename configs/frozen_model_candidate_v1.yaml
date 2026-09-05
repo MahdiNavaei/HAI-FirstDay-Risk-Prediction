@@ -1,4 +1,4 @@
-version: "prompt4-frozen-v1"
+version: "frozen-model-v1"
 status: "FROZEN DEVELOPMENT CANDIDATE — no tuning or locked-period evaluation permitted"
 source_protocol: "docs/STUDY_GOVERNANCE.md / frozen development candidate"
 outcome:
@@ -25,7 +25,7 @@ model:
   scale_pos_weight: 1.0
   n_jobs: 1
   random_state: 42
-  unspecified_xgboost_parameters: "null means not passed by the Prompt 3 runtime; retain the installed XGBoost library default"
+  unspecified_xgboost_parameters: "null means not passed by the development analysis runtime; retain the installed XGBoost library default"
 feature_set:
   name: "C"
   base_predictors:

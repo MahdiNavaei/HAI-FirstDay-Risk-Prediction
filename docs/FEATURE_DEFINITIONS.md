@@ -1,7 +1,7 @@
 # Feature definitions
 
-Feature construction is implemented in `src/modeling/prompt3_runtime.py` and
-the deterministic source cleaning in `src/modeling/run_prompt3.py`.
+Feature construction is implemented in `src/modeling/modeling_runtime.py` and
+the deterministic source cleaning in `src/modeling/development_analysis.py`.
 
 ## Feature Set A
 

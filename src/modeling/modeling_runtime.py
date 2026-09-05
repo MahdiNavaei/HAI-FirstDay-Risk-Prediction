@@ -1,8 +1,8 @@
-"""Runtime helpers for the Prompt 3 development analysis.
+"""Runtime helpers for the development analysis development analysis.
 
 The module intentionally contains no data-loading side effects.  All learned
 transformations are fitted by the estimator/pipeline on the current training
-fold.  Raw-source cleaning and analysis orchestration live in run_prompt3.py.
+fold.  Raw-source cleaning and analysis orchestration live in development_analysis.py.
 """
 
 from __future__ import annotations

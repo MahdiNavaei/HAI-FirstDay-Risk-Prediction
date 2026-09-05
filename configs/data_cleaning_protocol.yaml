@@ -1,5 +1,5 @@
-version: "prompt2b-v2"
-status: "AMENDED PROTOCOL ONLY — model development permitted under Prompt 2B restrictions; do not apply to the locked candidate test period"
+version: "pre-model-protocol-v2"
+status: "AMENDED PROTOCOL ONLY — model development permitted under pre-model protocol restrictions; do not apply to the locked candidate test period"
 raw_source: "user-supplied via --data; the dataset is not distributed with this repository"
 prediction_window_source_declared: "Admission and the first 24 hours after hospital admission"
 prediction_timepoint_status: "PARTIALLY VERIFIED"

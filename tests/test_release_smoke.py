@@ -23,7 +23,7 @@ def test_public_scripts_use_explicit_data_inputs() -> None:
     for name in ["prepare_data.py", "reproduce_development.py", "reproduce_heldout.py"]:
         text = (ROOT / "scripts" / name).read_text(encoding="utf-8")
         assert "--data" in text
-    source = (ROOT / "src" / "modeling" / "run_prompt3.py").read_text(encoding="utf-8")
+    source = (ROOT / "src" / "modeling" / "development_analysis.py").read_text(encoding="utf-8")
     assert 'ROOT / "data" / "raw"' in source
     assert "D:" not in source
 

@@ -1,4 +1,4 @@
-version: "prompt2b-v2"
+version: "pre-model-protocol-v2"
 outcome: "Label as released; exact HAI operational definition UNVERIFIED IN PUBLIC DOCUMENTATION"
 natural_prevalence_n: 119743
 natural_prevalence_positive_n: 1567

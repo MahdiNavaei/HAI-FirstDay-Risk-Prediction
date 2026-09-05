@@ -1,8 +1,8 @@
-"""Prompt 4 frozen-model robustness, reliability, and freeze analysis.
+"""robustness analysis frozen-model robustness, reliability, and freeze analysis.
 
-This runner deliberately uses only the Prompt 3 development pool.  It does
+This runner deliberately uses only the development analysis development pool.  It does
 not load, score, predict, or otherwise inspect model performance for the
-candidate period ``1404-2``.  The Prompt 3 selected configuration is reused
+candidate period ``1404-2``.  The development analysis selected configuration is reused
 without tuning.
 """
 
@@ -33,18 +33,18 @@ from sklearn.model_selection import StratifiedKFold
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import prompt3_runtime as R  # noqa: E402
-import run_prompt3 as P3  # noqa: E402
-from prompt3_runtime import calibration_slope_intercept  # noqa: E402
+import modeling_runtime as R  # noqa: E402
+import development_analysis as P3  # noqa: E402
+from modeling_runtime import calibration_slope_intercept  # noqa: E402
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-REPORT = ROOT / "reports" / "prompt4"
-TABLE = ROOT / "tables" / "prompt4"
-FIGURE = ROOT / "figures" / "prompt4"
-ARTIFACT = ROOT / "artifacts" / "prompt4"
-MODEL = ROOT / "models" / "prompt4"
+REPORT = ROOT / "reports" / "robustness"
+TABLE = ROOT / "tables" / "robustness"
+FIGURE = ROOT / "figures" / "robustness"
+ARTIFACT = ROOT / "artifacts" / "robustness"
+MODEL = ROOT / "models" / "robustness"
 CONFIG = ROOT / "configs"
 RAW = P3.RAW
 LOCKED_YEAR = "1404-2"
@@ -87,14 +87,14 @@ def write_json(path: Path, value: Any) -> None:
 
 
 def configure_logging() -> logging.Logger:
-    logger = logging.getLogger("prompt4")
+    logger = logging.getLogger("robustness")
     logger.setLevel(logging.INFO)
     logger.handlers.clear()
     formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
     stream = logging.StreamHandler(sys.stdout)
     stream.setFormatter(formatter)
     logger.addHandler(stream)
-    file_handler = logging.FileHandler(ROOT / "logs" / "prompt4_execution.log", encoding="utf-8")
+    file_handler = logging.FileHandler(ROOT / "logs" / "robustness_execution.log", encoding="utf-8")
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
     return logger
@@ -396,7 +396,7 @@ def run_simple_challenge(runs: dict[str, dict[str, Any]]) -> tuple[pd.DataFrame,
     comparators = [
         ("Logistic Regression / B", runs["Logistic Regression/B"]),
         ("Logistic Regression / C", runs["Logistic Regression/C"]),
-        ("LightGBM / C (best non-XGBoost Prompt 3 candidate)", runs["LightGBM/C"]),
+        ("LightGBM / C (best non-XGBoost development analysis candidate)", runs["LightGBM/C"]),
         ("XGBoost / B", runs["XGBoost/B"]),
     ]
     rows: list[dict[str, Any]] = []
@@ -420,11 +420,11 @@ def run_simple_challenge(runs: dict[str, dict[str, Any]]) -> tuple[pd.DataFrame,
     strongest = table.iloc[0]
     text = """# Simple-model challenge
 
-The challenge reused the frozen Prompt 3 configurations on the same Prompt 4 repeated five-fold partitions. No new tuning was performed. Differences are paired within split (`XGBoost / C` minus comparator); positive Brier differences mean XGBoost had worse Brier because lower is better.
+The challenge reused the frozen development analysis configurations on the same robustness analysis repeated five-fold partitions. No new tuning was performed. Differences are paired within split (`XGBoost / C` minus comparator); positive Brier differences mean XGBoost had worse Brier because lower is better.
 
 """
     text += table.to_string(index=False)
-    text += "\n\nTiny numerical differences are not called clinically meaningful. The complete paired estimates and 95% t-based intervals are in `tables/prompt4/simple_model_challenge.csv`."
+    text += "\n\nTiny numerical differences are not called clinically meaningful. The complete paired estimates and 95% t-based intervals are in `tables/robustness/simple_model_challenge.csv`."
     write_text(REPORT / "04_simple_model_challenge.md", text)
     return table, str(strongest["interpretation"])
 
@@ -450,7 +450,7 @@ def run_incremental_value(runs: dict[str, dict[str, Any]]) -> pd.DataFrame:
     make_plot(FIGURE / "incremental_feature_value", fig)
     text = """# Incremental feature value
 
-The same frozen XGBoost configuration was evaluated on identical Prompt 4 folds. `A_to_B` measures the addition of first-day clinical values beyond Age/Sex/Triage. `B_to_C` measures the addition of explicit missingness indicators beyond those values. Differences are paired (`newer - older`) and are not interpreted as causal effects.
+The same frozen XGBoost configuration was evaluated on identical robustness analysis folds. `A_to_B` measures the addition of first-day clinical values beyond Age/Sex/Triage. `B_to_C` measures the addition of explicit missingness indicators beyond those values. Differences are paired (`newer - older`) and are not interpreted as causal effects.
 
 """ + table.to_string(index=False) + "\n\nA small B-to-C difference is not promoted as a primary novelty."
     write_text(REPORT / "05_incremental_feature_value.md", text)
@@ -487,11 +487,11 @@ def run_missingness_decision(runs: dict[str, dict[str, Any]]) -> tuple[str, pd.D
     pd.DataFrame(budget_rows).to_csv(TABLE / "missingness_budget_utility.csv", index=False, encoding="utf-8-sig")
     text = f"""# Missingness claim decision
 
-Prompt 3 classified missingness indicators as NEUTRAL with M1-M0 mean AP change approximately +0.004828. Under the stronger frozen-model resampling, the paired result is **{status}**.
+development analysis classified missingness indicators as NEUTRAL with M1-M0 mean AP change approximately +0.004828. Under the stronger frozen-model resampling, the paired result is **{status}**.
 
 {table.to_string(index=False)}
 
-M2 is the missingness-only workflow baseline. Its mean AP was `{row['m2_mean_pr_auc']:.6f}` versus M0 `{row['m0_mean_pr_auc']:.6f}` and M1 `{row['m1_mean_pr_auc']:.6f}`. Alert-budget utility is in `tables/prompt4/missingness_budget_utility.csv`.
+M2 is the missingness-only workflow baseline. Its mean AP was `{row['m2_mean_pr_auc']:.6f}` versus M0 `{row['m0_mean_pr_auc']:.6f}` and M1 `{row['m1_mean_pr_auc']:.6f}`. Alert-budget utility is in `tables/robustness/missingness_budget_utility.csv`.
 
 Because the confidence interval and alert-budget evidence do not support a clearly robust primary gain when classified as neutral/small/unstable, missingness is retained as a secondary workflow/robustness finding rather than the headline novelty. Indicators are associative and may reflect ordering, workflow, or documentation.
 """
@@ -538,7 +538,7 @@ Overall D-minus-C AP gain: `{overall_gain:.6f}`. Gain after excluding clearly in
 
 {table.to_string(index=False)}
 
-High-risk prediction distribution by complaint group is in `tables/prompt4/complaint_high_risk_distribution.csv`. A positive D gain alone is not treated as clinical value; concentrated lexical signal remains a shortcut concern. No complaint field is promoted into the final primary model.
+High-risk prediction distribution by complaint group is in `tables/robustness/complaint_high_risk_distribution.csv`. A positive D gain alone is not treated as clinical value; concentrated lexical signal remains a shortcut concern. No complaint field is promoted into the final primary model.
 """
     write_text(REPORT / "07_complaint_shortcut_audit.md", text)
     return status, table
@@ -577,15 +577,15 @@ def run_calibration_stress(clean: pd.DataFrame, primary: dict[str, Any], y: pd.S
     fig, ax = plt.subplots(figsize=(7, 6))
     ax.plot(frac_pred, frac_true, marker="o", label="Pooled OOF")
     ax.plot([0, 1], [0, 1], "--", color="gray", label="Ideal")
-    ax.set_xlabel("Mean predicted probability"); ax.set_ylabel("Observed event frequency"); ax.set_title("Prompt 4 calibration stress test"); ax.legend()
+    ax.set_xlabel("Mean predicted probability"); ax.set_ylabel("Observed event frequency"); ax.set_title("robustness analysis calibration stress test"); ax.legend()
     make_plot(FIGURE / "calibration_stress_test", fig)
     text = f"""# Calibration stress test
 
-The frozen raw XGBoost probabilities were evaluated using pooled out-of-fold predictions averaged across the five repeats. No post-hoc recalibration was fitted in Prompt 4. Prompt 3's nested sigmoid comparison did not materially improve Brier, so the final policy remains no recalibration.
+The frozen raw XGBoost probabilities were evaluated using pooled out-of-fold predictions averaged across the five repeats. No post-hoc recalibration was fitted in robustness analysis. the development-analysis nested sigmoid comparison did not materially improve Brier, so the final policy remains no recalibration.
 
 Overall: Brier `{overall['brier']:.6f}`, slope `{overall['calibration_slope']:.6f}`, intercept `{overall['calibration_intercept']:.6f}`, calibration-in-the-large `{overall['calibration_in_the_large']:.6f}`, observed/expected ratio `{overall['observed_expected_ratio']:.6f}`.
 
-Group estimates with fewer than 20 events have calibration slope/intercept suppressed. The complete table is `tables/prompt4/calibration_stress_by_group.csv`; the pooled curve is `figures/prompt4/calibration_stress_test.*`. Calibration variation is descriptive and does not establish transportability.
+Group estimates with fewer than 20 events have calibration slope/intercept suppressed. The complete table is `tables/robustness/calibration_stress_by_group.csv`; the pooled curve is `figures/robustness/calibration_stress_test.*`. Calibration variation is descriptive and does not establish transportability.
 """
     write_text(REPORT / "08_calibration_stress_test.md", text + "\n" + table.to_string(index=False))
     return {"brier": overall["brier"], "slope": overall["calibration_slope"], "intercept": overall["calibration_intercept"], "citl": overall["calibration_in_the_large"], "oe_ratio": overall["observed_expected_ratio"]}
@@ -610,7 +610,7 @@ def run_pr_stability(primary: dict[str, Any]) -> pd.DataFrame:
     precision, recall, _ = precision_recall_curve(pooled.y_true, pooled.predicted_probability)
     ax.plot(recall, precision, color="#e15759", linewidth=2.2, label="Pooled OOF")
     ax.axhline(float(pooled.y_true.mean()), color="gray", linestyle="--", label="No-skill prevalence")
-    ax.set_xlabel("Recall"); ax.set_ylabel("Precision"); ax.set_title("Prompt 4 PR stability across repeated folds"); ax.legend()
+    ax.set_xlabel("Recall"); ax.set_ylabel("Precision"); ax.set_title("robustness analysis PR stability across repeated folds"); ax.legend()
     make_plot(FIGURE / "pr_stability", fig)
     table = pd.DataFrame(rows)
     table.to_csv(TABLE / "pr_stability_fold_metrics.csv", index=False, encoding="utf-8-sig")
@@ -619,7 +619,7 @@ def run_pr_stability(primary: dict[str, Any]) -> pd.DataFrame:
     cv = float(table.ap.std(ddof=1) / table.ap.mean()) if table.ap.mean() else float("nan")
     text = f"""# Precision-recall stability
 
-The plot shows all `{len(table)}` fold/repeat-specific PR curves plus the pooled out-of-fold curve. Average Precision mean was `{table.ap.mean():.6f}`, median `{table.ap.median():.6f}`, minimum `{table.ap.min():.6f}`, and maximum `{table.ap.max():.6f}`; the coefficient of variation was `{cv:.3f}`. Precision at selected recalls and recall at selected precision levels are in `tables/prompt4/pr_stability_fold_metrics.csv`.
+The plot shows all `{len(table)}` fold/repeat-specific PR curves plus the pooled out-of-fold curve. Average Precision mean was `{table.ap.mean():.6f}`, median `{table.ap.median():.6f}`, minimum `{table.ap.min():.6f}`, and maximum `{table.ap.max():.6f}`; the coefficient of variation was `{cv:.3f}`. Precision at selected recalls and recall at selected precision levels are in `tables/robustness/pr_stability_fold_metrics.csv`.
 
 The result is not treated as being driven by a single favorable split when the fold distribution is reviewed alongside the reported interval. Rare-event precision remains workload-dependent and should be interpreted with the alert-budget analysis.
 """
@@ -644,14 +644,14 @@ def run_alert_budget(primary: dict[str, Any], prevalence: float) -> tuple[pd.Dat
     ax2 = ax1.twinx()
     ax2.errorbar(mean_ppv["budget_pct"], mean_ppv["mean"], yerr=[mean_ppv["mean"] - mean_ppv["ci_low"], mean_ppv["ci_high"] - mean_ppv["mean"]], marker="s", label="PPV", color="#e15759")
     ax2.set_ylabel("PPV")
-    ax1.set_title("Prompt 4 alert-budget robustness")
+    ax1.set_title("robustness analysis alert-budget robustness")
     make_plot(FIGURE / "alert_budget_robustness", fig)
     top = pooled_table.loc[pooled_table.budget_pct == 5].iloc[0]
     text = f"""# Alert-budget robustness
 
 Every fold/repeat was scored at fixed percentile alert budgets of 1%, 2%, 5%, and 10%; no probability threshold was selected. The primary top-5% result from pooled out-of-fold predictions was `{top['hai_captured_n']:.0f}` HAI captured, sensitivity `{top['sensitivity']:.6f}`, PPV `{top['ppv']:.6f}`, enrichment `{top['enrichment_over_prevalence']:.3f}x`, and `{top['false_alerts_per_true_hai']:.3f}` false alerts per true HAI detected.
 
-The long-form fold distribution is in `tables/prompt4/alert_budget_robustness.csv`; pooled values are in `tables/prompt4/alert_budget_pooled_oof.csv`. This is theoretical retrospective alert workload evidence, not a deployment threshold or prospective clinical utility result.
+The long-form fold distribution is in `tables/robustness/alert_budget_robustness.csv`; pooled values are in `tables/robustness/alert_budget_pooled_oof.csv`. This is theoretical retrospective alert workload evidence, not a deployment threshold or prospective clinical utility result.
 """
     write_text(REPORT / "10_alert_budget_robustness.md", text + "\n" + summary.to_string(index=False))
     return summary, pooled_table
@@ -675,7 +675,7 @@ def run_decision_curve(primary: dict[str, Any], prevalence: float) -> tuple[str,
     ax.plot(table.threshold_probability, table.model_net_benefit, label="Frozen XGBoost", color="#4e79a7")
     ax.plot(table.threshold_probability, table.treat_all_net_benefit, label="Treat all", color="#f28e2b")
     ax.plot(table.threshold_probability, table.treat_none_net_benefit, label="Treat none", color="#59a14f")
-    ax.set_xlabel("Threshold probability"); ax.set_ylabel("Net benefit (theoretical)"); ax.set_title("Prompt 4 decision curve analysis"); ax.legend()
+    ax.set_xlabel("Threshold probability"); ax.set_ylabel("Net benefit (theoretical)"); ax.set_title("robustness analysis decision curve analysis"); ax.legend()
     make_plot(FIGURE / "decision_curve", fig)
     dominated = bool((table.model_net_benefit > table.treat_none_net_benefit).all() and (table.model_net_benefit > table.treat_all_net_benefit).mean() > 0.5)
     status = "model exceeds treat-none and treat-all for most assessed thresholds" if dominated else "model does not consistently exceed both reference strategies"
@@ -683,7 +683,7 @@ def run_decision_curve(primary: dict[str, Any], prevalence: float) -> tuple[str,
 
 This is a theoretical decision-curve calculation over threshold probabilities 0.005-0.100 in 0.005 increments. It assumes a review/intervention benefit-to-harm odds equal to the threshold odds. The CSV has no treatment-effect, harm, capacity, or workflow data, so net benefit is not clinical utility and does not support deployment.
 
-Result: the frozen model **{status}** under this assumed weighting. Values are in `tables/prompt4/decision_curve_values.csv`; the figure is `figures/prompt4/decision_curve.*`.
+Result: the frozen model **{status}** under this assumed weighting. Values are in `tables/robustness/decision_curve_values.csv`; the figure is `figures/robustness/decision_curve.*`.
 """
     write_text(REPORT / "11_decision_curve_analysis.md", text)
     return status, table
@@ -727,7 +727,7 @@ def run_subgroups(clean: pd.DataFrame, primary: dict[str, Any]) -> tuple[pd.Data
     if not plot_table.empty:
         plot_table["label"] = plot_table["axis"] + ": " + plot_table["group"]
         ax.barh(plot_table.label, plot_table.pr_auc, color="#4e79a7")
-    ax.set_xlabel("Average Precision"); ax.set_title("Prompt 4 subgroup reliability (descriptive)")
+    ax.set_xlabel("Average Precision"); ax.set_title("robustness analysis subgroup reliability (descriptive)")
     make_plot(FIGURE / "subgroup_reliability", fig)
     spread = float(plot_table.pr_auc.max() - plot_table.pr_auc.min()) if not plot_table.empty else float("nan")
     concerning = bool((plot_table.pr_auc < float(frame.y_true.mean()) * 2).any()) if not plot_table.empty else False
@@ -736,7 +736,7 @@ def run_subgroups(clean: pd.DataFrame, primary: dict[str, Any]) -> tuple[pd.Data
 
 The frozen primary candidate was evaluated across Sex, clinically coherent age bands, triage level, missingness burden, non-candidate period, and common Department groups. Department is descriptive only and is not a predictor. Groups with fewer than 20 events have inferential metrics suppressed. This is not fairness validation and does not establish patient-independent reliability.
 
-Reportable-group AP range: `{spread:.6f}`. Terminal descriptive assessment: **{status}**. Full results, event counts, calibration, and global top-5 operating metrics are in `tables/prompt4/subgroup_reliability.csv` and `figures/prompt4/subgroup_reliability.*`.
+Reportable-group AP range: `{spread:.6f}`. Terminal descriptive assessment: **{status}**. Full results, event counts, calibration, and global top-5 operating metrics are in `tables/robustness/subgroup_reliability.csv` and `figures/robustness/subgroup_reliability.*`.
 """
     write_text(REPORT / "12_subgroup_reliability.md", text + "\n" + table.to_string(index=False))
     return table, status
@@ -773,7 +773,7 @@ def run_period_shift(clean: pd.DataFrame, primary: dict[str, Any]) -> tuple[pd.D
 
 Only `1402`, `1403`, and `1404` were evaluated. `1404-2` was excluded completely. This is **coarse period robustness**, not true temporal validation. The same pooled out-of-fold predictions were summarized by observed period.
 
-Prevalence range: `{prevalence_range:.6f}`. AP range: `{ap_range:.6f}`. Missingness-rate range: `{missing_range:.6f}`. Descriptive terminal assessment: **{status}**. Differences should be considered compatible with a mixture of prevalence shift, covariate/workflow shift, and unexplained instability; the available three coarse categories cannot identify a causal source. Full metrics and distribution-shift summaries are in `tables/prompt4/period_shift_stress.csv`.
+Prevalence range: `{prevalence_range:.6f}`. AP range: `{ap_range:.6f}`. Missingness-rate range: `{missing_range:.6f}`. Descriptive terminal assessment: **{status}**. Differences should be considered compatible with a mixture of prevalence shift, covariate/workflow shift, and unexplained instability; the available three coarse categories cannot identify a causal source. Full metrics and distribution-shift summaries are in `tables/robustness/period_shift_stress.csv`.
 """
     write_text(REPORT / "13_period_shift_stress_test.md", text + "\n" + table.to_string(index=False))
     return table, status
@@ -866,7 +866,7 @@ Moderately stable features: {', '.join(map(str, moderate)) or 'none'}.
 
 Unstable features: {', '.join(map(str, unstable)) or 'none'}.
 
-Missingness indicators are explicitly marked in `tables/prompt4/shap_stability.csv`. High importance without stability is not promoted as a robust clinical finding.
+Missingness indicators are explicitly marked in `tables/robustness/shap_stability.csv`. High importance without stability is not promoted as a robust clinical finding.
 """
     write_text(REPORT / "14_explanation_stability.md", text)
     return table, overall, f"top10_jaccard={np.mean(pair_jaccard):.4f}; rank_spearman={np.mean(pair_spearman):.4f}"
@@ -892,7 +892,7 @@ def run_feature_effect_sanity(effects: pd.DataFrame, shap_table: pd.DataFrame) -
 
 The most stable non-missing numeric clinical features were inspected using fold-level native TreeSHAP contributions binned by validation-fold quantiles. These are associative model-shape diagnostics, not causal effects. `T`, `RBC`, `PT`, `Row`, `Year`, `Department`, and `diagnosis` were not promoted; known source anomalies remain governed by the protocol.
 
-Automated result: **{status}**. A flag indicates a shape requiring human/source review, not biological implausibility. Profiles are in `tables/prompt4/feature_effect_profiles.csv`.
+Automated result: **{status}**. A flag indicates a shape requiring human/source review, not biological implausibility. Profiles are in `tables/robustness/feature_effect_profiles.csv`.
 
 {flag_table.to_string(index=False)}
 """)
@@ -950,7 +950,7 @@ def run_negative_control(clean: pd.DataFrame, y: pd.Series, params: dict[str, An
 
 The frozen XGBoost/C pipeline was trained with three independent label permutations and evaluated on the original observed labels using three stratified folds per permutation. This is a small controlled sanity check, not a full null distribution. Expected behavior is collapse toward the observed-prevalence PR-AUC baseline `{baseline:.6f}`.
 
-Mean permuted-label AP was `{mean_ap:.6f}`; maximum was `{table.average_precision.max():.6f}`. Terminal result: **{status}**. Full fold results are in `tables/prompt4/negative_control_results.csv`.
+Mean permuted-label AP was `{mean_ap:.6f}`; maximum was `{table.average_precision.max():.6f}`. Terminal result: **{status}**. Full fold results are in `tables/robustness/negative_control_results.csv`.
 """)
     return status, table
 
@@ -966,7 +966,7 @@ def run_duplicate_sensitivity(raw: pd.DataFrame, clean: pd.DataFrame) -> tuple[s
     status = "not applicable" if raw_feature == 0 and dev_feature == 0 else "concerning"
     write_text(REPORT / "19_duplicate_sensitivity.md", f"""# Duplicate sensitivity
 
-Prompt 1/2 reported zero exact duplicate rows and zero duplicate feature vectors after excluding administrative `Row` and target `Label`. The deterministic recheck found: `{json.dumps(counts)}`.
+Stage 1/2 reported zero exact duplicate rows and zero duplicate feature vectors after excluding administrative `Row` and target `Label`. The deterministic recheck found: `{json.dumps(counts)}`.
 
 Terminal result: **{status}**. Because no exact development predictor duplicates were present, a grouped/removed-duplicate model sensitivity was not applicable. This does not establish patient uniqueness and does not identify repeated admissions without a linkage key.
 """)
@@ -986,19 +986,19 @@ Average Precision summarizes ranking precision and recall under extreme class im
 def write_freeze_configs(enrichment: pd.DataFrame, pooled_alert: pd.DataFrame, calibration: dict[str, Any]) -> None:
     frozen = yaml.safe_load((CONFIG / "frozen_model_candidate_v1.yaml").read_text(encoding="utf-8"))
     final_model = dict(frozen)
-    final_model["version"] = "prompt4-final-model-specification-v1"
+    final_model["version"] = "final-model-specification-v1"
     final_model["status"] = "FROZEN FOR ONE-TIME PRE-SPECIFIED HELD-OUT-PERIOD EVALUATION"
     final_model["freeze_decision"] = "KEEP XGBOOST / FEATURE SET C"
     final_model["calibration_policy"] = "NO RECALIBRATION"
     final_model["locked_test_policy"] = "no 1404-2 access before one-time evaluation; no changes afterward"
     write_text(CONFIG / "FINAL_MODEL_SPECIFICATION.yaml", yaml.safe_dump(final_model, sort_keys=False, allow_unicode=True))
     operating = {
-        "version": "prompt4-final-operating-policy-v1",
+        "version": "final-operating-policy-v1",
         "status": "FROZEN BEFORE HELD-OUT EVALUATION",
         "primary_operating_point": "top 5% alert budget",
         "reported_alert_budgets_percent": [1, 2, 5, 10],
         "selection_rule": "rank predictions within the evaluated held-out set and alert the top fixed percentage; do not choose a probability threshold using held-out outcomes",
-        "development_reference": "Prompt 4 pooled OOF development estimates only; not a threshold calibration",
+        "development_reference": "robustness analysis pooled OOF development estimates only; not a threshold calibration",
         "threshold_locked": False,
         "no_test_optimization": True,
         "degradation_rule": "report the held-out result with uncertainty; do not retune, change features, recalibrate, or rescue the model after observing it",
@@ -1006,17 +1006,17 @@ def write_freeze_configs(enrichment: pd.DataFrame, pooled_alert: pd.DataFrame, c
     }
     write_text(CONFIG / "FINAL_OPERATING_POLICY.yaml", yaml.safe_dump(operating, sort_keys=False, allow_unicode=True))
     calibration_policy = {
-        "version": "prompt4-final-calibration-policy-v1",
+        "version": "final-calibration-policy-v1",
         "status": "FROZEN",
         "method": "NO RECALIBRATION",
-        "reason": "Prompt 3 nested sigmoid calibration did not materially improve Brier; Prompt 4 evaluates raw frozen probabilities",
+        "reason": "development analysis nested sigmoid calibration did not materially improve Brier; robustness analysis evaluates raw frozen probabilities",
         "development_pooled_reference": calibration,
         "held_out_policy": "do not fit or select recalibration after observing held-out outcomes",
     }
     write_text(CONFIG / "FINAL_CALIBRATION_POLICY.yaml", yaml.safe_dump(calibration_policy, sort_keys=False, allow_unicode=True))
     test_policy = {
-        "version": "prompt4-final-test-execution-policy-v1",
-        "status": "FROZEN — DO NOT EXECUTE IN PROMPT 4",
+        "version": "final-test-execution-policy-v1",
+        "status": "FROZEN — DO NOT EXECUTE DURING ROBUSTNESS ANALYSIS",
         "locked_candidate_period": "1404-2",
         "expected_rows": 23746,
         "held_out_period_allowed": True,
@@ -1040,7 +1040,7 @@ def write_manuscript_decision_and_titles(robust: pd.DataFrame, enrichment: pd.Da
 3. **C — Calibration/reliability:** important supporting contribution because Brier, calibration slope, subgroup calibration, and uncertainty are reported.
 4. **D — Incremental value of first-day clinical data:** central secondary analysis comparing A→B and B→C.
 5. **F — Robustness under period/subgroup shift:** descriptive coarse-period and subgroup evidence, not temporal or patient-independent validation.
-6. **E — Missingness-aware prediction:** secondary workflow finding; Prompt 4 classification is **{missingness_status}**, so it is not placed in the title or claimed as the primary novelty.
+6. **E — Missingness-aware prediction:** secondary workflow finding; robustness analysis classification is **{missingness_status}**, so it is not placed in the title or claimed as the primary novelty.
 
 Recommended contribution statement: {contribution}
 
@@ -1053,20 +1053,20 @@ Complaint grouping remains sensitivity-only and is classified **{complaint_statu
         "Evaluating First-Day Clinical Information for Hospital-Acquired Infection Risk Stratification under a Fixed Alert Budget",
         "Calibration, Enrichment, and Period Robustness in Early Hospital-Acquired Infection Risk Prediction",
     ]
-    write_text(REPORT / "24_provisional_title_candidates.md", "# Provisional title candidates\n\n" + "\n".join(f"{i}. {title}" for i, title in enumerate(titles, start=1)) + "\n\nInformative missingness is intentionally absent from the titles because its Prompt 4 effect is not promoted as a robust primary novelty.")
+    write_text(REPORT / "24_provisional_title_candidates.md", "# Provisional title candidates\n\n" + "\n".join(f"{i}. {title}" for i, title in enumerate(titles, start=1)) + "\n\nInformative missingness is intentionally absent from the titles because its robustness analysis effect is not promoted as a robust primary novelty.")
     return contribution
 
 
 def write_reviewer_stress(robust: pd.DataFrame, enrichment: pd.DataFrame, simple: pd.DataFrame, missingness_status: str, complaint_status: str, subgroup_status: str, period_status: str) -> None:
     top = enrichment.loc[enrichment.budget_pct == 5].iloc[0]
     criticisms = [
-        ("The absolute AP is modest despite a large relative lift.", "high", "addressed", f"Prompt 4 reports prevalence `{top['prevalence']:.6f}`, AP lift `{top['ap_lift_pooled_x']:.3f}x`, bootstrap uncertainty, and fixed-budget enrichment.", "Frame the result as ranking/alert efficiency, not accuracy; add independent evaluation.", "yes"),
+        ("The absolute AP is modest despite a large relative lift.", "high", "addressed", f"robustness analysis reports prevalence `{top['prevalence']:.6f}`, AP lift `{top['ap_lift_pooled_x']:.3f}x`, bootstrap uncertainty, and fixed-budget enrichment.", "Frame the result as ranking/alert efficiency, not accuracy; add independent evaluation.", "yes"),
         ("The HAI operational definition and Label=0 meaning are not verified.", "critical", "not addressed", "STUDY_PROTOCOL_v2 retains this as an explicit limitation.", "Obtain source adjudication/codebook or make the limitation prominent in title, abstract, and discussion.", "partly"),
         ("No patient identifier means row-level CV may overstate generalization.", "critical", "not addressable from current release", "Patient-independent validation is explicitly unsupported; exact duplicates are absent but repeated admissions cannot be ruled out.", "Obtain a validated linkage key or author-confirmed uniqueness; otherwise keep encounter-level wording.", "yes with new source data"),
         ("The first-day timing is not verified at field level.", "high", "partly addressed", "Creator-level admission/first-24-hour wording supports the study window, but exact variable timestamps remain unavailable.", "Obtain field-level timestamps or restrict wording to source-declared first-day data.", "yes with new source data"),
-        ("The single-release, coarse-period design is not external or temporal validation.", "high", "partly addressed", f"Prompt 4 uses non-candidate coarse periods with AP range `{robust.loc[robust.metric == 'pr_auc', 'max'].iloc[0] - robust.loc[robust.metric == 'pr_auc', 'min'].iloc[0]:.6f}` and preserves the `1404-2` lock.", "Run the one-time held-out-period evaluation; do not call it true temporal validation without chronology evidence.", "yes"),
-        ("Missingness may encode workflow and may not transport.", "high", "addressed as a limitation", f"Prompt 4 missingness decision is `{missingness_status}` and missingness-only performance is reported.", "Avoid causal/informative-missingness novelty language; validate in another workflow.", "yes"),
-        ("Complaint text may be an infection-related lexical shortcut.", "high", "addressed as sensitivity audit", f"Prompt 4 complaint shortcut classification is `{complaint_status}` with infection-related exclusion and alert-distribution analysis.", "Keep complaint grouping out of the primary model and obtain clinically timed complaint data.", "yes"),
+        ("The single-release, coarse-period design is not external or temporal validation.", "high", "partly addressed", f"robustness analysis uses non-candidate coarse periods with AP range `{robust.loc[robust.metric == 'pr_auc', 'max'].iloc[0] - robust.loc[robust.metric == 'pr_auc', 'min'].iloc[0]:.6f}` and preserves the `1404-2` lock.", "Run the one-time held-out-period evaluation; do not call it true temporal validation without chronology evidence.", "yes"),
+        ("Missingness may encode workflow and may not transport.", "high", "addressed as a limitation", f"robustness analysis missingness decision is `{missingness_status}` and missingness-only performance is reported.", "Avoid causal/informative-missingness novelty language; validate in another workflow.", "yes"),
+        ("Complaint text may be an infection-related lexical shortcut.", "high", "addressed as sensitivity audit", f"robustness analysis complaint shortcut classification is `{complaint_status}` with infection-related exclusion and alert-distribution analysis.", "Keep complaint grouping out of the primary model and obtain clinically timed complaint data.", "yes"),
         ("Decision curve net benefit relies on invented clinical assumptions.", "medium", "addressed transparently", "DCA is explicitly theoretical with stated threshold and benefit/harm assumptions; no treatment effect is claimed.", "Add workflow capacity and intervention-harm estimates before clinical utility claims.", "yes"),
         ("Subgroup performance and calibration may be unstable for rare events.", "high", "partly addressed", f"Groups below 20 events are suppressed and subgroup robustness is `{subgroup_status}`.", "Add larger multi-site data and pre-specified subgroup power targets.", "yes with new data"),
         ("XGBoost novelty is limited relative to standard tabular ML.", "medium", "partly addressed", "The manuscript contribution is precision/alert-budget evaluation, incremental value, calibration, and robustness rather than algorithmic novelty.", "Emphasize the clinical evaluation design and compare against simple baselines.", "yes"),
@@ -1080,7 +1080,7 @@ def write_reviewer_stress(robust: pd.DataFrame, enrichment: pd.DataFrame, simple
 def write_master_report(summary: dict[str, Any], robust: pd.DataFrame, enrichment: pd.DataFrame, simple: pd.DataFrame, incremental: pd.DataFrame, missingness_status: str, complaint_status: str, calibration: dict[str, Any], pr: pd.DataFrame, alert: pd.DataFrame, dca_status: str, subgroup_status: str, period_status: str, bootstrap: pd.DataFrame, shap_status: str, error_status: str, negative_status: str, duplicate_status: str) -> None:
     top = enrichment.loc[enrichment.budget_pct == 5].iloc[0]
     b5 = alert[(alert.budget_pct == 5) & (alert.metric == "sensitivity")].iloc[0]
-    text = f"""# Prompt 4 Master Robustness and Freeze Report
+    text = f"""# robustness analysis Master Robustness and Freeze Report
 
 **Status:** `PASS WITH WARNINGS`
 **Locked candidate touched:** `NO`
@@ -1088,7 +1088,7 @@ def write_master_report(summary: dict[str, Any], robust: pd.DataFrame, enrichmen
 
 ## 1. Executive summary
 
-Prompt 4 challenged the frozen Prompt 3 candidate using 25 repeated stratified five-fold development resamples without tuning. The candidate remained above the prevalence baseline, and the top-5% alert result was evaluated with fold/repeat uncertainty. The result supports one pre-specified held-out-period evaluation with warnings; it does not establish patient-independent, external, prospective, or deployment validity.
+robustness analysis challenged the frozen development analysis candidate using 25 repeated stratified five-fold development resamples without tuning. The candidate remained above the prevalence baseline, and the top-5% alert result was evaluated with fold/repeat uncertainty. The result supports one pre-specified held-out-period evaluation with warnings; it does not establish patient-independent, external, prospective, or deployment validity.
 
 ## 2. Frozen model
 
@@ -1096,23 +1096,23 @@ Prompt 4 challenged the frozen Prompt 3 candidate using 25 repeated stratified f
 
 ## 3. Robustness validation
 
-Five-fold stratified CV over seeds `{', '.join(map(str, ROBUSTNESS_SEEDS))}`; no `1404-2` records were scored. Full mean/median/SD/IQR/95% CI/min/max summaries are in `tables/prompt4/frozen_model_robustness.csv`.
+Five-fold stratified CV over seeds `{', '.join(map(str, ROBUSTNESS_SEEDS))}`; no `1404-2` records were scored. Full mean/median/SD/IQR/95% CI/min/max summaries are in `tables/robustness/frozen_model_robustness.csv`.
 
 ## 4. Rare-event enrichment
 
-Development prevalence/no-skill AP was `{top['prevalence']:.6f}`. Mean-fold AP was `{top['robust_mean_pr_auc']:.6f}` and pooled repeated OOF AP was `{top['robust_pooled_pr_auc']:.6f}`; pooled AP lift was `{top['ap_lift_pooled_x']:.3f}x`. Alert-budget enrichment is in `tables/prompt4/enrichment_analysis.csv`.
+Development prevalence/no-skill AP was `{top['prevalence']:.6f}`. Mean-fold AP was `{top['robust_mean_pr_auc']:.6f}` and pooled repeated OOF AP was `{top['robust_pooled_pr_auc']:.6f}`; pooled AP lift was `{top['ap_lift_pooled_x']:.3f}x`. Alert-budget enrichment is in `tables/robustness/enrichment_analysis.csv`.
 
 ## 5. Simple-model challenge
 
-Paired comparisons against Logistic Regression B/C, LightGBM/C, and XGBoost/B are in `tables/prompt4/simple_model_challenge.csv`. Terminal interpretation: `{summary['simple_model_challenge_result']}`; small differences are not called clinically meaningful.
+Paired comparisons against Logistic Regression B/C, LightGBM/C, and XGBoost/B are in `tables/robustness/simple_model_challenge.csv`. Terminal interpretation: `{summary['simple_model_challenge_result']}`; small differences are not called clinically meaningful.
 
 ## 6. Incremental feature value
 
-A→B and B→C paired changes under the same frozen XGBoost configuration are in `tables/prompt4/incremental_feature_value.csv` and `figures/prompt4/incremental_feature_value.*`.
+A→B and B→C paired changes under the same frozen XGBoost configuration are in `tables/robustness/incremental_feature_value.csv` and `figures/robustness/incremental_feature_value.*`.
 
 ## 7. Missingness result
 
-Missingness decision: **{missingness_status}**. Missingness-only, values-only, values-plus-indicators, paired uncertainty, and alert utility are reported in `reports/prompt4/06_missingness_claim_decision.md`.
+Missingness decision: **{missingness_status}**. Missingness-only, values-only, values-plus-indicators, paired uncertainty, and alert utility are reported in `reports/robustness/06_missingness_claim_decision.md`.
 
 ## 8. Complaint shortcut result
 
@@ -1124,11 +1124,11 @@ Pooled OOF calibration: Brier `{calibration['brier']:.6f}`, slope `{calibration[
 
 ## 10. PR stability
 
-All 25 fold/repeat PR curves, AP distribution, precision-at-recall, and recall-at-precision summaries are in `figures/prompt4/pr_stability.*` and `tables/prompt4/pr_stability_fold_metrics.csv`.
+All 25 fold/repeat PR curves, AP distribution, precision-at-recall, and recall-at-precision summaries are in `figures/robustness/pr_stability.*` and `tables/robustness/pr_stability_fold_metrics.csv`.
 
 ## 11. Alert-budget stability
 
-At top 5%, the pooled OOF result was `{top['pooled_hai_captured_n']:.0f}` captured events, PPV `{top['pooled_ppv']:.6f}`, and `{top['pooled_enrichment_over_prevalence']:.3f}x` prevalence. Fold/repeat variability is in `tables/prompt4/alert_budget_robustness.csv`.
+At top 5%, the pooled OOF result was `{top['pooled_hai_captured_n']:.0f}` captured events, PPV `{top['pooled_ppv']:.6f}`, and `{top['pooled_enrichment_over_prevalence']:.3f}x` prevalence. Fold/repeat variability is in `tables/robustness/alert_budget_robustness.csv`.
 
 ## 12. Decision curve
 
@@ -1136,7 +1136,7 @@ DCA result: `{dca_status}` under explicitly theoretical threshold-benefit assump
 
 ## 13. Subgroups
 
-Subgroup assessment: **{subgroup_status}**. Event-count suppression and descriptive Department stratification are documented in `tables/prompt4/subgroup_reliability.csv`.
+Subgroup assessment: **{subgroup_status}**. Event-count suppression and descriptive Department stratification are documented in `tables/robustness/subgroup_reliability.csv`.
 
 ## 14. Period shift
 
@@ -1144,7 +1144,7 @@ Period assessment: **{period_status}**. Results use `coarse period robustness` l
 
 ## 15. Bootstrap uncertainty
 
-Stratified 2,000-replicate bootstrap uncertainty is in `tables/prompt4/bootstrap_uncertainty.csv`. It resamples pooled development OOF rows while preserving observed positive and negative counts.
+Stratified 2,000-replicate bootstrap uncertainty is in `tables/robustness/bootstrap_uncertainty.csv`. It resamples pooled development OOF rows while preserving observed positive and negative counts.
 
 ## 16. Explanation stability
 
@@ -1152,7 +1152,7 @@ Native XGBoost TreeSHAP was calculated across folds; stability assessment is `{s
 
 ## 17. Error phenotypes
 
-High-confidence false positives, false negatives, true-positive high-risk encounters, and true-negative low-risk encounters are descriptively summarized in `reports/prompt4/16_error_phenotypes.md` (`{error_status}`).
+High-confidence false positives, false negatives, true-positive high-risk encounters, and true-negative low-risk encounters are descriptively summarized in `reports/robustness/16_error_phenotypes.md` (`{error_status}`).
 
 ## 18. Negative controls
 
@@ -1180,17 +1180,17 @@ The strongest defensible contribution is precision/alert-budget evaluation of ra
 
 ## 24. CBM reviewer risks
 
-The ten-criticism simulation is in `reports/prompt4/23_cbm_reviewer_stress_test.md`.
+The ten-criticism simulation is in `reports/robustness/23_cbm_reviewer_stress_test.md`.
 
 ## 25. Q1 readiness
 
 Q1 readiness: **{summary['q1_readiness']}**. CBM readiness: **{summary['cbm_readiness']}**. AI in Medicine readiness: **{summary['ai_in_medicine_readiness']}**. The primary unresolved risks are outcome definition, field-level timing, patient independence, single-release generalizability, modest absolute PPV, and workflow dependence.
 
-## 26. Exact Prompt 5 instructions
+## 26. Exact Stage 5 instructions
 
-Prompt 5 may run exactly once on `1404-2` only under the frozen model, calibration, operating, and test policies. It must not tune, change features, alter preprocessing, recalibrate, choose thresholds, or inspect results iteratively. Report PR-AUC, AUROC, Brier, calibration slope/intercept/CITL, prevalence, alert budgets 1/2/5/10%, uncertainty, and any degradation. Use the wording `pre-specified held-out-period evaluation`; do not call it true temporal validation unless Year chronology is independently verified. Do not claim patient-independent, external, prospective, or deployment validity. If held-out performance degrades, report it and downgrade the conclusions; do not rescue the model.
+Stage 5 may run exactly once on `1404-2` only under the frozen model, calibration, operating, and test policies. It must not tune, change features, alter preprocessing, recalibrate, choose thresholds, or inspect results iteratively. Report PR-AUC, AUROC, Brier, calibration slope/intercept/CITL, prevalence, alert budgets 1/2/5/10%, uncertainty, and any degradation. Use the wording `pre-specified held-out-period evaluation`; do not call it true temporal validation unless Year chronology is independently verified. Do not claim patient-independent, external, prospective, or deployment validity. If held-out performance degrades, report it and downgrade the conclusions; do not rescue the model.
 """
-    write_text(ROOT / "reports" / "PROMPT4_MASTER_ROBUSTNESS_AND_FREEZE.md", text)
+    write_text(ROOT / "reports" / "ROBUSTNESS_AND_FREEZE_MASTER.md", text)
 
 
 def write_summary_json(enrichment: pd.DataFrame, robust: pd.DataFrame, calibration: dict[str, Any], missingness_status: str, complaint_status: str, simple_result: str, subgroup_status: str, period_status: str, negative_status: str, duplicate_status: str, final_model: str, contribution: str, q1: str, cbm: str, aim: str) -> dict[str, Any]:
@@ -1239,7 +1239,7 @@ def write_summary_json(enrichment: pd.DataFrame, robust: pd.DataFrame, calibrati
             "n": int(robust.loc[robust.metric == "pr_auc", "n_folds"].iloc[0]),
         },
     }
-    write_json(ROOT / "reports" / "prompt4_summary.json", summary)
+    write_json(ROOT / "reports" / "robustness_summary.json", summary)
     return summary
 
 
@@ -1247,11 +1247,11 @@ def write_frozen_robustness_report(robust: pd.DataFrame, primary: dict[str, Any]
     ap = robust[robust.metric == "pr_auc"].iloc[0]
     text = f"""# Frozen-model robustness
 
-The exact Prompt 3 XGBoost/Feature Set C configuration was evaluated without tuning on 25 development-only resamples: five stratified folds repeated over five fixed seeds. The candidate period `1404-2` was not scored. Validation rows retained natural prevalence and all preprocessing was fitted inside the training fold.
+The exact development analysis XGBoost/Feature Set C configuration was evaluated without tuning on 25 development-only resamples: five stratified folds repeated over five fixed seeds. The candidate period `1404-2` was not scored. Validation rows retained natural prevalence and all preprocessing was fitted inside the training fold.
 
 Average Precision: mean `{ap['mean']:.6f}`, median `{ap['median']:.6f}`, SD `{ap['sd']:.6f}`, IQR `{ap['iqr']:.6f}`, 95% CI `{ap['ci_low']:.6f}` to `{ap['ci_high']:.6f}`, minimum `{ap['min']:.6f}`, maximum `{ap['max']:.6f}`. The prevalence/no-skill reference is `{prevalence:.6f}`.
 
-The complete mean/median/SD/IQR/95% CI/minimum/maximum summary for PR-AUC, AUROC, Brier, calibration, and top-5% threshold metrics is in `tables/prompt4/frozen_model_robustness.csv`; fold-level values are in `artifacts/prompt4/frozen_model_fold_results.parquet`.
+The complete mean/median/SD/IQR/95% CI/minimum/maximum summary for PR-AUC, AUROC, Brier, calibration, and top-5% threshold metrics is in `tables/robustness/frozen_model_robustness.csv`; fold-level values are in `artifacts/robustness/frozen_model_fold_results.parquet`.
 """
     write_text(REPORT / "03_frozen_model_robustness.md", text + "\n" + robust.to_string(index=False))
 
@@ -1264,11 +1264,11 @@ def extract_marked_status(path: Path, marker: str, default: str) -> str:
 
 
 def finalize_existing() -> None:
-    """Finish report/config assembly from completed Prompt 4 artifacts."""
+    """Finish report/config assembly from completed robustness analysis artifacts."""
     global PARAMS, SPLITS, _LOGGER
     ensure_dirs()
     _LOGGER = configure_logging()
-    metadata = json.loads((ROOT / "models" / "prompt3" / "selected_model_metadata.json").read_text(encoding="utf-8"))
+    metadata = json.loads((ROOT / "models" / "development" / "selected_model_metadata.json").read_text(encoding="utf-8"))
     PARAMS = dict(metadata["parameters"]["XGBoost"])
     raw = pd.read_csv(RAW, dtype="string", keep_default_na=False, na_filter=False, low_memory=False)
     raw_hash = P3.raw_sha256(RAW)
@@ -1314,20 +1314,20 @@ def finalize_existing() -> None:
     summary = write_summary_json(enrichment, robust, calibration, missingness_status, complaint_status, str(simple_table.iloc[0]["interpretation"]), subgroup_status, period_status, negative_status, duplicate_status, final_model, contribution, q1, cbm, aim)
     write_freeze_configs(enrichment, pooled_alert, calibration)
     write_master_report(summary, robust, enrichment, simple_table, incremental, missingness_status, complaint_status, calibration, pd.read_csv(TABLE / "pr_stability_fold_metrics.csv"), alert, dca_status, subgroup_status, period_status, pd.read_csv(TABLE / "bootstrap_uncertainty.csv"), shap_detail, error_status, negative_status, duplicate_status)
-    final_pipeline = joblib.load(ROOT / "models" / "prompt3" / "selected_primary_pipeline.joblib")
+    final_pipeline = joblib.load(ROOT / "models" / "development" / "selected_primary_pipeline.joblib")
     joblib.dump(final_pipeline, MODEL / "final_primary_pipeline.joblib", compress=3)
-    write_json(MODEL / "final_model_metadata.json", {"source_pipeline": "models/prompt3/selected_primary_pipeline.joblib", "model": "XGBoost", "feature_set": "C", "fit_rows": len(dev), "locked_period_supplied": False, "calibration": "NO RECALIBRATION", "operating_policy": "top 5% primary; 1/2/5/10% reported"})
-    write_json(REPORT / "PROMPT4_RUN_MANIFEST.json", {"prompt": "Prompt 4", "raw_sha256": raw_hash, "full_n": int(stats["full_n"]), "full_positive_n": int(stats["full_positive_n"]), "development_n": len(dev), "development_positive_n": int(y.sum()), "locked_candidate_period": LOCKED_YEAR, "locked_test_touched": False, "robustness_folds": N_SPLITS, "robustness_seeds": ROBUSTNESS_SEEDS, "bootstrap_n": BOOTSTRAP_N, "negative_control_seeds": NEGATIVE_CONTROL_SEEDS, "frozen_model": "XGBoost / C", "final_model_decision": final_model, "no_refit_after_robustness": True})
-    _LOGGER.info("Prompt 4 finalization complete: %s; q1=%s; locked_test_touched=false", final_model, q1)
+    write_json(MODEL / "final_model_metadata.json", {"source_pipeline": "models/development/selected_primary_pipeline.joblib", "model": "XGBoost", "feature_set": "C", "fit_rows": len(dev), "locked_period_supplied": False, "calibration": "NO RECALIBRATION", "operating_policy": "top 5% primary; 1/2/5/10% reported"})
+    write_json(REPORT / "ROBUSTNESS_RUN_MANIFEST.json", {"stage": "robustness analysis", "raw_sha256": raw_hash, "full_n": int(stats["full_n"]), "full_positive_n": int(stats["full_positive_n"]), "development_n": len(dev), "development_positive_n": int(y.sum()), "locked_candidate_period": LOCKED_YEAR, "locked_test_touched": False, "robustness_folds": N_SPLITS, "robustness_seeds": ROBUSTNESS_SEEDS, "bootstrap_n": BOOTSTRAP_N, "negative_control_seeds": NEGATIVE_CONTROL_SEEDS, "frozen_model": "XGBoost / C", "final_model_decision": final_model, "no_refit_after_robustness": True})
+    _LOGGER.info("robustness analysis finalization complete: %s; q1=%s; locked_test_touched=false", final_model, q1)
 
 
 def main() -> None:
     global PARAMS, SPLITS, _LOGGER
     ensure_dirs()
     _LOGGER = configure_logging()
-    _LOGGER.info("Prompt 4 start: frozen robustness only")
+    _LOGGER.info("robustness analysis start: frozen robustness only")
     frozen = yaml.safe_load((CONFIG / "frozen_model_candidate_v1.yaml").read_text(encoding="utf-8"))
-    metadata = json.loads((ROOT / "models" / "prompt3" / "selected_model_metadata.json").read_text(encoding="utf-8"))
+    metadata = json.loads((ROOT / "models" / "development" / "selected_model_metadata.json").read_text(encoding="utf-8"))
     assert frozen["model"]["family"] == metadata["primary_model"] == "XGBoost"
     assert frozen["feature_set"]["name"] == metadata["primary_feature_set"] == "C"
     PARAMS = dict(metadata["parameters"]["XGBoost"])
@@ -1343,7 +1343,7 @@ def main() -> None:
     assert not dev["Year"].eq(LOCKED_YEAR).any()
     SPLITS = make_splits(y)
     assert len(SPLITS) == 25
-    write_text(REPORT / "00_execution_boundary.md", "# Prompt 4 execution boundary\n\nAll Prompt 4 model calculations use only Year 1402, 1403, and 1404. `1404-2` is excluded from every fit, prediction, threshold calculation, performance table, bootstrap, subgroup, period, and explainability calculation. The frozen candidate and five-fold/five-seed design were recorded before execution.")
+    write_text(REPORT / "00_execution_boundary.md", "# robustness analysis execution boundary\n\nAll robustness analysis model calculations use only Year 1402, 1403, and 1404. `1404-2` is excluded from every fit, prediction, threshold calculation, performance table, bootstrap, subgroup, period, and explainability calculation. The frozen candidate and five-fold/five-seed design were recorded before execution.")
 
     runs: dict[str, dict[str, Any]] = {}
     runs["XGBoost/C"] = run_fixed("XGBoost", "C", dev, y, PARAMS, SPLITS, keep_predictions=True, collect_shap=True)
@@ -1351,7 +1351,7 @@ def main() -> None:
     robust.to_csv(TABLE / "frozen_model_robustness.csv", index=False, encoding="utf-8-sig")
     write_frozen_robustness_report(robust, runs["XGBoost/C"], float(y.mean()))
 
-    # The following are frozen Prompt 3 comparisons only; none are tuned here.
+    # The following are frozen development analysis comparisons only; none are tuned here.
     runs["XGBoost/A"] = run_fixed("XGBoost", "A", dev, y, PARAMS, SPLITS)
     runs["XGBoost/B"] = run_fixed("XGBoost", "B", dev, y, PARAMS, SPLITS)
     runs["XGBoost/D"] = run_fixed("XGBoost", "D", dev, y, PARAMS, SPLITS, keep_predictions=True)
@@ -1411,13 +1411,13 @@ def main() -> None:
     write_freeze_configs(enrichment, pooled_alert, calibration)
     write_master_report(summary, robust, enrichment, simple_table, incremental, missingness_status, complaint_status, calibration, pr, alert, dca_status, subgroup_status, period_status, bootstrap, shap_detail, error_status, negative_status, duplicate_status)
 
-    # Copy the already fitted Prompt 3 development pipeline as the frozen
-    # Prompt 4 reference; this is not a new fit and receives no locked rows.
-    final_pipeline = joblib.load(ROOT / "models" / "prompt3" / "selected_primary_pipeline.joblib")
+    # Copy the already fitted development analysis development pipeline as the frozen
+    # robustness analysis reference; this is not a new fit and receives no locked rows.
+    final_pipeline = joblib.load(ROOT / "models" / "development" / "selected_primary_pipeline.joblib")
     joblib.dump(final_pipeline, MODEL / "final_primary_pipeline.joblib", compress=3)
-    write_json(MODEL / "final_model_metadata.json", {"source_pipeline": "models/prompt3/selected_primary_pipeline.joblib", "model": "XGBoost", "feature_set": "C", "fit_rows": 95997, "locked_period_supplied": False, "calibration": "NO RECALIBRATION", "operating_policy": "top 5% primary; 1/2/5/10% reported"})
-    write_json(REPORT / "PROMPT4_RUN_MANIFEST.json", {"prompt": "Prompt 4", "raw_sha256": raw_hash, "full_n": int(stats["full_n"]), "full_positive_n": int(stats["full_positive_n"]), "development_n": len(dev), "development_positive_n": int(y.sum()), "locked_candidate_period": LOCKED_YEAR, "locked_test_touched": False, "robustness_folds": N_SPLITS, "robustness_seeds": ROBUSTNESS_SEEDS, "bootstrap_n": BOOTSTRAP_N, "negative_control_seeds": NEGATIVE_CONTROL_SEEDS, "frozen_model": "XGBoost / C", "final_model_decision": final_model, "no_refit_after_robustness": True})
-    _LOGGER.info("Prompt 4 complete: %s; q1=%s; locked_test_touched=false", final_model, q1)
+    write_json(MODEL / "final_model_metadata.json", {"source_pipeline": "models/development/selected_primary_pipeline.joblib", "model": "XGBoost", "feature_set": "C", "fit_rows": 95997, "locked_period_supplied": False, "calibration": "NO RECALIBRATION", "operating_policy": "top 5% primary; 1/2/5/10% reported"})
+    write_json(REPORT / "ROBUSTNESS_RUN_MANIFEST.json", {"stage": "robustness analysis", "raw_sha256": raw_hash, "full_n": int(stats["full_n"]), "full_positive_n": int(stats["full_positive_n"]), "development_n": len(dev), "development_positive_n": int(y.sum()), "locked_candidate_period": LOCKED_YEAR, "locked_test_touched": False, "robustness_folds": N_SPLITS, "robustness_seeds": ROBUSTNESS_SEEDS, "bootstrap_n": BOOTSTRAP_N, "negative_control_seeds": NEGATIVE_CONTROL_SEEDS, "frozen_model": "XGBoost / C", "final_model_decision": final_model, "no_refit_after_robustness": True})
+    _LOGGER.info("robustness analysis complete: %s; q1=%s; locked_test_touched=false", final_model, q1)
 
 
 if __name__ == "__main__":

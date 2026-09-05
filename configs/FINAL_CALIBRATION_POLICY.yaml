@@ -1,7 +1,7 @@
-version: prompt4-final-calibration-policy-v1
+version: final-calibration-policy-v1
 status: FROZEN
 method: NO RECALIBRATION
-reason: Prompt 3 nested sigmoid calibration did not materially improve Brier; Prompt
+reason: development analysis nested sigmoid calibration did not materially improve Brier; Stage
   4 evaluates raw frozen probabilities
 development_pooled_reference:
   brier: 0.0122742131259927

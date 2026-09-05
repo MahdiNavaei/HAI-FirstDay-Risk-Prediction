@@ -1,5 +1,5 @@
-version: "prompt2b-v2"
-status: "DESIGN ONLY — model development permitted under Prompt 2B restrictions; no locked-candidate test evaluation"
+version: "pre-model-protocol-v2"
+status: "DESIGN ONLY — model development permitted under pre-model protocol restrictions; no locked-candidate test evaluation"
 prediction_window_source_declared: "Admission and the first 24 hours after hospital admission"
 prediction_timepoint_status: "PARTIALLY VERIFIED"
 temporal_validation_status: "PARTIAL / COARSE PERIOD VALIDATION ONLY"
